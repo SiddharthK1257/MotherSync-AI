@@ -1,0 +1,21 @@
+{
+  "name": "mothersync-ai",
+  "version": "1.0.0",
+  "description": "MotherSync AI — Multi-Agent Maternal Healthcare & Care Coordination Platform",
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
+    "start:backend": "cd backend && npm start"
+  },
+  "keywords": [
+    "maternal-health",
+    "pregnancy",
+    "ai-agents",
+    "gemini",
+    "healthcare",
+    "telemetry"
+  ],
+  "author": "MotherSync AI Team",
+  "license": "MIT"
+}
