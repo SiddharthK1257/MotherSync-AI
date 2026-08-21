@@ -73,6 +73,11 @@ const corsOptions = {
     const isAllowed = 
       allowed.includes(cleanOrigin) ||
       cleanOrigin.endsWith('.vercel.app') ||
+      cleanOrigin.includes('vercel.app') ||
+      cleanOrigin.includes('onrender.com') ||
+      cleanOrigin.includes('mothersync') ||
+      cleanOrigin.includes('localhost') ||
+      cleanOrigin.includes('127.0.0.1') ||
       process.env.FRONTEND_URL === '*' ||
       process.env.NODE_ENV !== 'production';
 
@@ -86,7 +91,8 @@ const corsOptions = {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  exposedHeaders: ['Authorization']
+  exposedHeaders: ['Authorization'],
+  optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));

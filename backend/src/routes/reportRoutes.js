@@ -131,18 +131,23 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
       });
     }
 
+    const chosenType = reportType || type;
+
     // Run Gemini Document / Image extraction pipeline
     analysisResult = await GeminiService.analyzeMedicalDocument({
       fileBuffer,
       mimeType,
       fileName: file ? file.originalname : 'Medical_Report.txt',
-      rawText: rawText || ''
+      rawText: rawText || '',
+      reportType: chosenType
     });
+
+    const finalType = chosenType || analysisResult.type || 'blood_test';
 
     const reportData = {
       userId,
       title: title || analysisResult.title || (file ? file.originalname.replace(/\.[^/.]+$/, '') : 'Diagnostic Report Analysis'),
-      type: reportType || type || analysisResult.type || 'blood_test',
+      type: finalType,
       fileName: file ? file.filename : `${analysisResult.type || 'report'}_${Date.now()}.pdf`,
       fileUrl: file ? `/uploads/${file.filename}` : null,
       extractedText: rawText || (analysisResult.aiSummary ? `Summary: ${analysisResult.aiSummary}` : ''),
@@ -238,13 +243,16 @@ router.post('/analyze', protect, async (req, res) => {
       fileBuffer,
       mimeType: mimeType || 'image/jpeg',
       fileName: fileName || `${type}_report_${Date.now()}.pdf`,
-      rawText: rawText || ''
+      rawText: rawText || '',
+      reportType: type
     });
+
+    const finalType = type || aiAnalysis.type || 'blood_test';
 
     const reportData = {
       userId,
       title: title || aiAnalysis.title || 'Diagnostic Report Analysis',
-      type: type || aiAnalysis.type || 'blood_test',
+      type: finalType,
       fileName: fileName || `${type}_report_${Date.now()}.pdf`,
       extractedText: rawText || aiAnalysis.aiSummary,
       structuredFindings: aiAnalysis.structuredFindings || [],

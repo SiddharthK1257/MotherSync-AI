@@ -7,8 +7,8 @@ import axios from 'axios';
  * - Normalizes URL formatting by trimming trailing slashes and ensuring the `/api` prefix is present.
  */
 export const getApiBaseUrl = () => {
+  // 1. Explicit Vite Environment Variable
   const envUrl = import.meta.env.VITE_API_URL;
-
   if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
     let cleanUrl = envUrl.trim().replace(/\/+$/, '');
     if (!cleanUrl.endsWith('/api')) {
@@ -17,16 +17,31 @@ export const getApiBaseUrl = () => {
     return cleanUrl;
   }
 
-  // Handle missing VITE_API_URL in production builds clearly
-  if (import.meta.env.PROD) {
-    console.warn(
-      '⚠️ [MotherSync AI] VITE_API_URL is not set in environment variables! ' +
-      'Please configure VITE_API_URL in your Vercel Project Settings > Environment Variables ' +
-      '(e.g., VITE_API_URL=https://<YOUR_DEPLOYED_BACKEND>/api).'
-    );
+  // 2. Client-side LocalStorage override if customized
+  if (typeof window !== 'undefined') {
+    const localUrl = localStorage.getItem('mothersync_api_url');
+    if (localUrl && typeof localUrl === 'string' && localUrl.trim() !== '') {
+      let cleanUrl = localUrl.trim().replace(/\/+$/, '');
+      if (!cleanUrl.endsWith('/api')) {
+        cleanUrl = `${cleanUrl}/api`;
+      }
+      return cleanUrl;
+    }
+
+    // 3. Deployed production hostnames (e.g. *.vercel.app, mothersync.ai, etc.)
+    const hostname = window.location.hostname || '';
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '';
+    if (!isLocalhost) {
+      return 'https://mothersync-ai.onrender.com/api';
+    }
   }
 
-  // Local development default fallback
+  // 4. Vite Production Build Fallback
+  if (import.meta.env.PROD) {
+    return 'https://mothersync-ai.onrender.com/api';
+  }
+
+  // 5. Local development fallback
   return 'http://localhost:5000/api';
 };
 
@@ -46,6 +61,12 @@ api.interceptors.request.use(
     if (token && token !== 'null' && token !== 'undefined') {
       config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // If sending FormData (e.g. file upload), remove Content-Type header so browser computes multipart boundary
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      if (config.headers) {
+        delete config.headers['Content-Type'];
+      }
     }
     return config;
   },
@@ -114,7 +135,7 @@ export const labsAPI = {
   getLabs: () => api.get('/labs').catch(() => api.get('/reports')),
   getLabById: (id) => api.get(`/labs/${id}`).catch(() => api.get(`/reports/${id}`)),
   uploadLab: (data) => api.post('/labs', data).catch(() => api.post('/reports', data)),
-  uploadFile: (formData) => api.post('/labs/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).catch(() => api.post('/reports/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })),
+  uploadFile: (formData) => api.post('/labs/upload', formData).catch(() => api.post('/reports/upload', formData)),
 };
 
 // Backward-compatible alias
@@ -122,7 +143,7 @@ export const reportAPI = {
   getReports: () => api.get('/labs').catch(() => api.get('/reports')),
   getReportById: (id) => api.get(`/labs/${id}`).catch(() => api.get(`/reports/${id}`)),
   analyzeReport: (reportData) => api.post('/labs', reportData).catch(() => api.post('/reports', reportData)),
-  uploadFile: (formData) => api.post('/reports/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).catch(() => api.post('/labs/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })),
+  uploadFile: (formData) => api.post('/reports/upload', formData).catch(() => api.post('/labs/upload', formData)),
   doctorReviewReport: (id, doctorNotes) => api.post(`/reports/${id}/doctor-review`, { doctorNotes }),
 };
 
