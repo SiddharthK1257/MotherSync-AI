@@ -174,7 +174,8 @@ router.post('/prepare-questions', protect, async (req, res) => {
 
     res.json({
       success: true,
-      questions
+      questions,
+      data: questions
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
