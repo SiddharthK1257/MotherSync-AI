@@ -135,6 +135,19 @@ router.post('/', protect, async (req, res) => {
       symptoms
     });
 
+    const formattedSymptoms = (Array.isArray(symptoms) ? symptoms : [symptoms])
+      .filter(Boolean)
+      .map(s => {
+        if (typeof s === 'string') {
+          return { name: s, severity: 'mild', notes: '' };
+        }
+        return {
+          name: s.name || s.symptom || 'Unspecified symptom',
+          severity: s.severity || 'mild',
+          notes: s.notes || s.description || ''
+        };
+      });
+
     const newRecordData = {
       userId,
       week: currentWeek,
@@ -152,7 +165,7 @@ router.post('/', protect, async (req, res) => {
       oxygenSaturation: Number(oxygenSaturation) || 98,
       source,
       fetalKicks: fetalKicks !== undefined && fetalKicks !== null ? Number(fetalKicks) : null,
-      symptoms: Array.isArray(symptoms) ? symptoms : [{ name: symptoms, severity: 'mild' }],
+      symptoms: formattedSymptoms,
       mood,
       waterIntakeOz: Number(waterIntakeOz) || 64,
       notes,
