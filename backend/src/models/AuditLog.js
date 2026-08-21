@@ -17,6 +17,7 @@ const auditLogSchema = new mongoose.Schema({
       'clinical_summary_generated',
       'emergency_sos_triggered',
       'user_login',
+      'user_logout',
       'user_registered',
       'doctor_review_saved'
     ],
@@ -29,10 +30,16 @@ const auditLogSchema = new mongoose.Schema({
 
 auditLogSchema.statics.record = async function (data) {
   try {
-    return await this.create({
-      ...data,
-      timestamp: new Date()
-    });
+    const { isMockMode } = require('../config/db');
+    if (isMockMode() || mongoose.connection.readyState !== 1) {
+      return { ...data, _id: `aud_${Date.now()}`, timestamp: new Date() };
+    }
+    const payload = { ...data, timestamp: new Date() };
+    if (payload.userId && !mongoose.Types.ObjectId.isValid(payload.userId)) {
+      payload.details = { ...(payload.details || {}), rawUserId: payload.userId };
+      delete payload.userId;
+    }
+    return await this.create(payload);
   } catch (err) {
     console.warn('⚠️ [AuditLog] Failed to record audit entry:', err.message);
     return null;

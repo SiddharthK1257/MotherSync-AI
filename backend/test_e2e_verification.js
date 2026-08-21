@@ -321,6 +321,26 @@ async function runVerification() {
         if (!remRes.data.success) throw new Error('Reminders fetch failed');
       });
 
+      // 26. Logout Authentication
+      await test('User Logout endpoint (/api/auth/logout)', async () => {
+        const logoutRes = await axios.post(`${BASE}/auth/logout`, {}, patientHeaders);
+        if (!logoutRes.data.success || !logoutRes.data.message.includes('logged out')) {
+          throw new Error('Logout failed');
+        }
+      });
+
+      // 27. Rejection of unauthenticated requests
+      await test('Verify 401 Unauthorized rejection without token', async () => {
+        try {
+          await axios.get(`${BASE}/auth/profile`);
+          throw new Error('Expected 401 but request succeeded');
+        } catch (err) {
+          if (err.response?.status !== 401) {
+            throw new Error(`Expected status 401, received ${err.response?.status}`);
+          }
+        }
+      });
+
     } finally {
       server.close(() => {
         console.log(`\n======================================================`);

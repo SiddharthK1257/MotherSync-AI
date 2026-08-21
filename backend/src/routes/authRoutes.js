@@ -331,4 +331,35 @@ router.put('/profile', protect, async (req, res) => {
   }
 });
 
+// @route   POST /api/auth/logout
+// @desc    Log out user and terminate session
+router.post('/logout', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      if (token && token !== 'null' && token !== 'undefined') {
+        try {
+          const decoded = jwt.verify(token, JWT_SECRET);
+          const AuditLog = require('../models/AuditLog');
+          await AuditLog.record({
+            userId: decoded.id,
+            eventType: 'user_logout',
+            details: { email: decoded.email, role: decoded.role, timestamp: new Date() }
+          });
+        } catch (e) {
+          // Token might already be expired or invalid
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Successfully logged out from MotherSync AI.'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

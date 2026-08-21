@@ -110,11 +110,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('mothersync_token');
-    setToken(null);
-    setUser(null);
-    setCurrentRisk(DEFAULT_RISK);
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout();
+    } catch (err) {
+      // Ignore network errors on logout
+    } finally {
+      localStorage.removeItem('mothersync_token');
+      setToken(null);
+      setUser(null);
+      setCurrentRisk(DEFAULT_RISK);
+    }
   };
 
   const handleUpdateProfile = async (updates) => {
