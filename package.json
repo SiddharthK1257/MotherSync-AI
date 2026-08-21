@@ -6,7 +6,9 @@
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "build:frontend": "cd frontend && npm run build",
-    "start:backend": "cd backend && npm start"
+    "start:backend": "cd backend && npm start",
+    "seed:backend": "cd backend && npm run seed",
+    "test": "cd backend && npm test"
   },
   "keywords": [
     "maternal-health",
@@ -17,5 +19,9 @@
     "telemetry"
   ],
   "author": "MotherSync AI Team",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "mongoose": "^9.9.3"
+  }
 }

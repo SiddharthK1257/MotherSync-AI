@@ -7,33 +7,18 @@
 
 // Critical Emergency Symptoms & Triggers
 const EMERGENCY_RED_FLAGS = [
-  { term: 'severe chest pain', category: 'cardiovascular' },
-  { term: 'chest pain', category: 'cardiovascular' },
-  { term: 'difficulty breathing', category: 'respiratory' },
-  { term: 'trouble breathing', category: 'respiratory' },
-  { term: 'shortness of breath', category: 'respiratory' },
-  { term: 'fainting', category: 'neurological' },
-  { term: 'passed out', category: 'neurological' },
-  { term: 'loss of consciousness', category: 'neurological' },
-  { term: 'seizure', category: 'neurological' },
-  { term: 'convulsion', category: 'neurological' },
-  { term: 'severe bleeding', category: 'obstetric' },
-  { term: 'heavy vaginal bleeding', category: 'obstetric' },
-  { term: 'soaking a pad in an hour', category: 'obstetric' },
-  { term: 'severe abdominal pain', category: 'obstetric' },
-  { term: 'sharp pelvic pain', category: 'obstetric' },
-  { term: 'water broke', category: 'obstetric' },
-  { term: 'fluid leaking continuously', category: 'obstetric' },
-  { term: 'severe headache with vision changes', category: 'preeclampsia' },
-  { term: 'blurry vision', category: 'preeclampsia' },
-  { term: 'seeing spots or flashing lights', category: 'preeclampsia' },
-  { term: 'sudden swelling in face and hands', category: 'preeclampsia' },
-  { term: 'severe pain in upper right abdomen', category: 'preeclampsia' },
-  { term: 'no baby movement', category: 'fetal_wellbeing' },
-  { term: 'stopped feeling baby move', category: 'fetal_wellbeing' },
-  { term: 'baby has not moved all day', category: 'fetal_wellbeing' },
-  { term: 'high fever', category: 'infection' },
-  { term: 'fever above 38.5', category: 'infection' }
+  { term: 'severe chest pain', pattern: /chest\s+pain/i, category: 'cardiovascular' },
+  { term: 'difficulty breathing', pattern: /(difficulty|trouble|shortness\s+of)\s+(breathing|breath)/i, category: 'respiratory' },
+  { term: 'fainting or syncope', pattern: /(fainting|passed\s+out|loss\s+of\s+consciousness|syncope|blacked\s+out)/i, category: 'neurological' },
+  { term: 'seizure or convulsion', pattern: /(seizure|convulsion|eclampsia)/i, category: 'neurological' },
+  { term: 'vaginal bleeding', pattern: /(vaginal\s+bleeding|heavy\s+bleeding|severe.*bleeding|hemorrhage|blood.*clot|soaking.*pad)/i, category: 'obstetric' },
+  { term: 'severe abdominal or pelvic pain', pattern: /(severe|sharp|unbearable|acute|intense).*(abdominal|pelvic|stomach|belly|cramp|pain)/i, category: 'obstetric' },
+  { term: 'amniotic fluid leakage / water broke', pattern: /(water\s+broke|fluid\s+leak|leaking\s+fluid|rupture\s+of\s+membranes)/i, category: 'obstetric' },
+  { term: 'preeclampsia headache & visual symptoms', pattern: /(severe\s+headache|blurry\s+vision|blurred\s+vision|seeing\s+spots|flashing\s+lights|scotoma)/i, category: 'preeclampsia' },
+  { term: 'sudden facial or hand swelling', pattern: /(sudden|severe).*(swelling|edema).*(face|hands|eyes)/i, category: 'preeclampsia' },
+  { term: 'right upper quadrant pain', pattern: /(upper\s+right|epigastric|under\s+rib).*(pain|ache)/i, category: 'preeclampsia' },
+  { term: 'absent or markedly reduced fetal movement', pattern: /(no|stopped|decrease|reduced|less|absent|not).*(baby.*mov|fetal.*mov|kick)/i, category: 'fetal_wellbeing' },
+  { term: 'high fever / systemic infection', pattern: /(high\s+fever|fever\s+(above|>|over)\s+(38|101)|chills.*fever)/i, category: 'infection' }
 ];
 
 // Disallowed Medical Assertions to Strip / Guard Against
@@ -51,11 +36,12 @@ class SafetyEngine {
    * Scans user text for acute medical emergencies requiring immediate triage override.
    */
   static detectEmergency(text = '') {
-    const lower = text.toLowerCase();
+    const raw = String(text || '');
+    const lower = raw.toLowerCase();
     const detectedFlags = [];
 
     for (const flag of EMERGENCY_RED_FLAGS) {
-      if (lower.includes(flag.term)) {
+      if (flag.pattern ? flag.pattern.test(raw) : lower.includes(flag.term.toLowerCase())) {
         detectedFlags.push(flag);
       }
     }

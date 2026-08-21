@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Baby, Play, Pause, RotateCcw, CheckCircle2, Sparkles, AlertCircle } from 'lucide-react';
-import { healthAPI } from '../services/api';
+import { kicksAPI } from '../services/api';
 
 export const KickCounterWidget = ({ onKickLogged }) => {
   const [kicks, setKicks] = useState(0);
@@ -49,12 +49,13 @@ export const KickCounterWidget = ({ onKickLogged }) => {
     setIsSaving(true);
     try {
       const durationMins = Math.max(1, Math.round(seconds / 60));
-      const res = await healthAPI.logKickSession({
+      const res = await kicksAPI.logKick({
         kickCount: kicks,
-        durationMinutes: durationMins,
+        duration: durationMins,
+        notes: 'User logged kick counting session'
       });
 
-      setSaveSuccess(res.data.feedback || 'Kick session logged successfully!');
+      setSaveSuccess(res.data.feedback || 'Kick session logged to MongoDB!');
       setIsActive(false);
       if (onKickLogged) onKickLogged(res.data);
     } catch (err) {
@@ -72,7 +73,7 @@ export const KickCounterWidget = ({ onKickLogged }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-rose-800">
           <Baby className="h-5 w-5" />
-          <h3 className="font-bold text-sm">Fetal Kick Counter (Goal: 10 Kicks)</h3>
+          <h3 className="font-bold text-sm">Fetal Kick Counter (Goal: 10 Movements)</h3>
         </div>
 
         <div className="flex items-center gap-2 font-mono text-xs font-semibold px-2.5 py-1 rounded-lg bg-white/80 border border-slate-200 text-slate-700">
@@ -83,7 +84,7 @@ export const KickCounterWidget = ({ onKickLogged }) => {
       {/* Progress & Target */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs font-semibold">
-          <span className="text-slate-600">Progress toward benchmark:</span>
+          <span className="text-slate-600">Progress toward session benchmark:</span>
           <span className={isGoalReached ? 'text-emerald-700 font-bold' : 'text-slate-900 font-bold'}>
             {kicks} / 10 movements
           </span>
@@ -112,11 +113,11 @@ export const KickCounterWidget = ({ onKickLogged }) => {
         <p className="text-[11px] text-slate-500 mt-2">Tap each time you feel a distinct baby movement</p>
       </div>
 
-      {/* Milestone celebration alert */}
+      {/* Milestone note */}
       {isGoalReached && (
         <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
-          <span><strong>10 Movements Reached!</strong> Healthy fetal activity session recorded.</span>
+          <span><strong>10 Movements Reached!</strong> Session benchmark recorded in database.</span>
         </div>
       )}
 
@@ -156,6 +157,10 @@ export const KickCounterWidget = ({ onKickLogged }) => {
       {saveSuccess && (
         <p className="text-[11px] text-emerald-700 font-medium text-center">{saveSuccess}</p>
       )}
+
+      <p className="text-[9px] text-slate-400 text-center leading-tight">
+        Kick counting is a supportive self-monitoring exercise and does not guarantee fetal health. Contact your clinic if you notice a significant decrease in movements.
+      </p>
     </div>
   );
 };

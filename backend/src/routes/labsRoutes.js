@@ -25,7 +25,7 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     const ext = path.extname(file.originalname);
-    cb(null, `report-${uniqueSuffix}${ext}`);
+    cb(null, `lab-${uniqueSuffix}${ext}`);
   }
 });
 
@@ -51,8 +51,8 @@ const upload = multer({
   fileFilter
 });
 
-// @route   GET /api/reports
-// @desc    Get all medical reports for the user from MongoDB
+// @route   GET /api/labs
+// @desc    Get all lab & ultrasound diagnostic reports from MongoDB
 router.get('/', protect, async (req, res) => {
   try {
     const userId = req.user._id;
@@ -76,50 +76,43 @@ router.get('/', protect, async (req, res) => {
       data: reports
     });
   } catch (error) {
+    console.error('Fetch labs error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// @route   GET /api/reports/:id
-// @desc    Get single report details
+// @route   GET /api/labs/:id
+// @desc    Get single lab report
 router.get('/:id', protect, async (req, res) => {
   try {
     const { id } = req.params;
 
     if (isMockMode() || typeof req.user._id === 'string' && String(req.user._id).startsWith('usr_')) {
       const report = mockStore.medicalReports.find(r => String(r._id) === String(id));
-      if (!report) {
-        return res.status(404).json({ success: false, message: 'Report not found' });
-      }
+      if (!report) return res.status(404).json({ success: false, message: 'Lab report not found.' });
       return res.json({ success: true, data: report });
     }
 
     const report = await MedicalReport.findOne({ _id: id, userId: req.user._id });
-    if (!report) {
-      return res.status(404).json({ success: false, message: 'Report not found' });
-    }
-
+    if (!report) return res.status(404).json({ success: false, message: 'Lab report not found.' });
     res.json({ success: true, data: report });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// @route   POST /api/reports/upload
-// @desc    Multipart file upload (PDF/JPG/PNG/WEBP) with Multimodal Gemini analysis & MongoDB persistence
+// @route   POST /api/labs/upload
+// @desc    Upload file (PDF/JPG/PNG/WEBP) for Lab / Ultrasound Extraction
 router.post('/upload', protect, upload.single('file'), async (req, res) => {
   try {
     const userId = req.user._id;
     const { title, reportType, type, rawText } = req.body;
     const file = req.file;
 
-    let analysisResult;
     let fileBuffer = null;
     let mimeType = 'text/plain';
-    let originalName = 'Diagnostic_Report';
 
     if (file) {
-      originalName = file.originalname;
       mimeType = file.mimetype;
       fileBuffer = fs.readFileSync(file.path);
     }
@@ -127,36 +120,37 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
     if (!file && (!rawText || rawText.trim() === '')) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide a medical report file (PDF, JPG, PNG, WEBP) or report text.'
+        message: 'Please upload a PDF, JPG, JPEG, PNG, or WEBP file or provide report text.'
       });
     }
 
-    // Run Gemini Document / Image extraction pipeline
-    analysisResult = await GeminiService.analyzeMedicalDocument({
+    const aiAnalysis = await GeminiService.analyzeMedicalDocument({
       fileBuffer,
       mimeType,
-      fileName: file ? file.originalname : 'Medical_Report.txt',
+      fileName: file ? file.originalname : 'Lab_Report.txt',
       rawText: rawText || ''
     });
 
+    const chosenType = reportType || type || aiAnalysis.type || 'blood_test';
+
     const reportData = {
       userId,
-      title: title || analysisResult.title || (file ? file.originalname.replace(/\.[^/.]+$/, '') : 'Diagnostic Report Analysis'),
-      type: reportType || type || analysisResult.type || 'blood_test',
-      fileName: file ? file.filename : `${analysisResult.type || 'report'}_${Date.now()}.pdf`,
+      title: title || aiAnalysis.title || (file ? file.originalname.replace(/\.[^/.]+$/, '') : 'Diagnostic Lab Analysis'),
+      type: chosenType,
+      fileName: file ? file.filename : `${chosenType}_report_${Date.now()}.pdf`,
       fileUrl: file ? `/uploads/${file.filename}` : null,
-      extractedText: rawText || (analysisResult.aiSummary ? `Summary: ${analysisResult.aiSummary}` : ''),
-      structuredFindings: analysisResult.structuredFindings || [],
-      ultrasoundDetails: analysisResult.ultrasoundDetails || null,
-      abnormalFindings: analysisResult.abnormalFindings || [],
-      aiSummary: analysisResult.aiSummary || 'Medical report processed successfully.',
-      laymanExplanation: analysisResult.laymanExplanation || 'Key findings summarized for your review.',
-      clinicianDiscussionPoints: analysisResult.clinicianDiscussionPoints || [],
-      questionsForDoctor: analysisResult.questionsForDoctor || [
+      extractedText: rawText || (aiAnalysis.aiSummary ? `Summary: ${aiAnalysis.aiSummary}` : ''),
+      structuredFindings: aiAnalysis.structuredFindings || [],
+      ultrasoundDetails: aiAnalysis.ultrasoundDetails || null,
+      abnormalFindings: aiAnalysis.abnormalFindings || [],
+      aiSummary: aiAnalysis.aiSummary || 'Medical report processed successfully.',
+      laymanExplanation: aiAnalysis.laymanExplanation || 'Key findings have been summarized for your review.',
+      clinicianDiscussionPoints: aiAnalysis.clinicianDiscussionPoints || [],
+      questionsForDoctor: aiAnalysis.questionsForDoctor || [
         'How do these results relate to my current gestational stage?',
-        'Do any findings warrant repeat testing or follow-up?'
+        'Do any findings warrant repeat testing?'
       ],
-      riskFlag: analysisResult.riskFlag || 'low',
+      riskFlag: aiAnalysis.riskFlag || 'low',
       doctorReviewed: false,
       doctorNotes: '',
       dateUploaded: new Date()
@@ -177,14 +171,9 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
         badgeType: savedReport.riskFlag === 'urgent' ? 'urgent' : savedReport.riskFlag === 'high' ? 'prompt_eval' : 'info'
       });
 
-      return res.status(201).json({
-        success: true,
-        message: 'Report analyzed and stored successfully.',
-        data: savedReport
-      });
+      return res.status(201).json({ success: true, data: savedReport });
     }
 
-    // MongoDB Mode
     const savedReport = await MedicalReport.create(reportData);
 
     await TimelineEvent.create({
@@ -199,32 +188,28 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
 
     await AuditLog.record({
       userId,
-      eventType: 'report_uploaded',
-      details: { title: savedReport.title, type: savedReport.type, findingsCount: savedReport.structuredFindings.length }
+      eventType: 'lab_uploaded',
+      details: { title: savedReport.title, type: chosenType, findingsCount: savedReport.structuredFindings.length }
     });
 
-    res.status(201).json({
-      success: true,
-      message: 'Report analyzed and stored successfully.',
-      data: savedReport
-    });
+    res.status(201).json({ success: true, data: savedReport });
   } catch (error) {
-    console.error('Report upload error:', error);
+    console.error('Lab file upload error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// @route   POST /api/reports/analyze (Also supports JSON text / base64)
-// @desc    Analyze medical report for AI translation & structured extraction into MongoDB
-router.post('/analyze', protect, async (req, res) => {
+// @route   POST /api/labs
+// @desc    Upload / analyze diagnostic report text or base64 with Gemini & save to MongoDB
+router.post('/', protect, async (req, res) => {
   try {
     const userId = req.user._id;
-    const { title, type = 'blood_test', fileName, rawText, base64Data, mimeType } = req.body;
+    const { title, reportType = 'blood_test', type = 'blood_test', fileName, rawText, base64Data, mimeType } = req.body;
 
     if (!rawText && !base64Data) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide medical report text or document content.'
+        message: "I couldn't reliably extract this value. Please upload a clearer report or ask a healthcare professional to review it."
       });
     }
 
@@ -234,18 +219,20 @@ router.post('/analyze', protect, async (req, res) => {
       fileBuffer = Buffer.from(cleanBase64, 'base64');
     }
 
+    const chosenType = reportType || type || 'blood_test';
+
     const aiAnalysis = await GeminiService.analyzeMedicalDocument({
       fileBuffer,
       mimeType: mimeType || 'image/jpeg',
-      fileName: fileName || `${type}_report_${Date.now()}.pdf`,
+      fileName: fileName || `${chosenType}_report_${Date.now()}.pdf`,
       rawText: rawText || ''
     });
 
     const reportData = {
       userId,
       title: title || aiAnalysis.title || 'Diagnostic Report Analysis',
-      type: type || aiAnalysis.type || 'blood_test',
-      fileName: fileName || `${type}_report_${Date.now()}.pdf`,
+      type: chosenType,
+      fileName: fileName || `${chosenType}_report_${Date.now()}.pdf`,
       extractedText: rawText || aiAnalysis.aiSummary,
       structuredFindings: aiAnalysis.structuredFindings || [],
       ultrasoundDetails: aiAnalysis.ultrasoundDetails || null,
@@ -278,13 +265,9 @@ router.post('/analyze', protect, async (req, res) => {
         badgeType: savedReport.riskFlag === 'urgent' ? 'urgent' : savedReport.riskFlag === 'high' ? 'prompt_eval' : 'info'
       });
 
-      return res.status(201).json({
-        success: true,
-        data: savedReport
-      });
+      return res.status(201).json({ success: true, data: savedReport });
     }
 
-    // MongoDB Mode
     const savedReport = await MedicalReport.create(reportData);
 
     await TimelineEvent.create({
@@ -299,54 +282,13 @@ router.post('/analyze', protect, async (req, res) => {
 
     await AuditLog.record({
       userId,
-      eventType: 'ai_analysis',
-      details: { title: savedReport.title, type: savedReport.type }
+      eventType: 'lab_uploaded',
+      details: { title: savedReport.title, type: chosenType, findingsCount: savedReport.structuredFindings.length }
     });
 
-    res.status(201).json({
-      success: true,
-      data: savedReport
-    });
+    res.status(201).json({ success: true, data: savedReport });
   } catch (error) {
-    console.error('Report analysis error:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// @route   POST /api/reports/:id/doctor-review
-// @desc    Doctor reviews and attaches notes to patient report in MongoDB
-router.post('/:id/doctor-review', protect, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { doctorNotes, confirmFinding = true } = req.body;
-
-    if (isMockMode() || typeof req.user._id === 'string' && String(req.user._id).startsWith('usr_')) {
-      const rep = mockStore.medicalReports.find(r => String(r._id) === String(id));
-      if (!rep) {
-        return res.status(404).json({ success: false, message: 'Report not found' });
-      }
-      rep.doctorReviewed = true;
-      rep.doctorNotes = doctorNotes || 'Reviewed by Obstetrician. Findings confirmed.';
-      return res.json({ success: true, data: rep });
-    }
-
-    const rep = await MedicalReport.findById(id);
-    if (!rep) {
-      return res.status(404).json({ success: false, message: 'Report not found' });
-    }
-
-    rep.doctorReviewed = true;
-    rep.doctorNotes = doctorNotes || 'Reviewed by Obstetrician.';
-    await rep.save();
-
-    await AuditLog.record({
-      userId: req.user._id,
-      eventType: 'doctor_review',
-      details: { reportId: id, doctorNotes }
-    });
-
-    res.json({ success: true, data: rep });
-  } catch (error) {
+    console.error('Lab report upload error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { healthAPI } from '../services/api';
+import { vitalsAPI } from '../services/api';
 import RiskBadge from '../components/RiskBadge';
 import VitalsChart from '../components/VitalsChart';
 import {
@@ -15,7 +15,9 @@ import {
   AlertTriangle,
   FileSpreadsheet,
   Clock,
-  Loader2
+  Loader2,
+  Thermometer,
+  Wind
 } from 'lucide-react';
 
 export const VitalsTrackingPage = () => {
@@ -34,6 +36,9 @@ export const VitalsTrackingPage = () => {
   const [formGlucose, setFormGlucose] = useState('92');
   const [formGlucoseType, setFormGlucoseType] = useState('fasting');
   const [formWeight, setFormWeight] = useState('68.5');
+  const [formTemp, setFormTemp] = useState('36.8');
+  const [formO2, setFormO2] = useState('98');
+  const [formSource, setFormSource] = useState('manual');
   const [formKicks, setFormKicks] = useState('12');
   const [formWater, setFormWater] = useState('80');
   const [formMood, setFormMood] = useState('Good');
@@ -55,7 +60,7 @@ export const VitalsTrackingPage = () => {
 
   const fetchRecords = async () => {
     try {
-      const res = await healthAPI.getHealthRecords();
+      const res = await vitalsAPI.getVitals();
       if (res.data.success) {
         setRecords(res.data.data);
         if (res.data.currentRisk) {
@@ -82,15 +87,41 @@ export const VitalsTrackingPage = () => {
     setIsSubmitting(true);
     setFeedback(null);
 
+    // Validation
+    const sys = Number(formBpSys);
+    const dia = Number(formBpDia);
+    const hr = Number(formHr);
+
+    if (sys < 50 || sys > 260) {
+      setFeedback({ type: 'error', message: 'Systolic blood pressure must be between 50 and 260 mmHg.' });
+      setIsSubmitting(false);
+      return;
+    }
+    if (dia < 30 || dia > 180) {
+      setFeedback({ type: 'error', message: 'Diastolic blood pressure must be between 30 and 180 mmHg.' });
+      setIsSubmitting(false);
+      return;
+    }
+    if (hr < 30 || hr > 240) {
+      setFeedback({ type: 'error', message: 'Heart rate must be between 30 and 240 bpm.' });
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      const res = await healthAPI.logHealthRecord({
+      const res = await vitalsAPI.logVital({
         week: Number(formWeek),
-        bpSystolic: Number(formBpSys),
-        bpDiastolic: Number(formBpDia),
-        heartRate: Number(formHr),
+        systolicBP: sys,
+        diastolicBP: dia,
+        bpSystolic: sys,
+        bpDiastolic: dia,
+        heartRate: hr,
         bloodGlucose: formGlucose ? Number(formGlucose) : null,
         glucoseType: formGlucoseType,
         weight: formWeight ? Number(formWeight) : null,
+        temperature: Number(formTemp) || 36.8,
+        oxygenSaturation: Number(formO2) || 98,
+        source: formSource,
         fetalKicks: formKicks ? Number(formKicks) : null,
         waterIntakeOz: Number(formWater),
         mood: formMood,
@@ -101,7 +132,7 @@ export const VitalsTrackingPage = () => {
       if (res.data.success) {
         setFeedback({
           type: 'success',
-          message: `Vitals logged! Safety status: ${res.data.risk.badge.label}`
+          message: `Vitals logged to MongoDB! Safety status: ${res.data.risk?.badge?.label || 'Routine 🟢'}`
         });
         setShowLogForm(false);
         fetchRecords();
@@ -126,7 +157,7 @@ export const VitalsTrackingPage = () => {
             <span>Maternal Vitals & Kick Telemetry</span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Longitudinal hemodynamic monitoring, symptom surveillance & clinical safety evaluation
+            Database-backed hemodynamic monitoring, symptom surveillance & clinical safety evaluation
           </p>
         </div>
 
@@ -157,10 +188,10 @@ export const VitalsTrackingPage = () => {
             <Activity className="h-4 w-4 text-teal-600" />
           </div>
           <p className="text-xl font-extrabold text-slate-900">
-            {latest.bpSystolic ? `${latest.bpSystolic}/${latest.bpDiastolic}` : '124/82'} <span className="text-xs font-normal text-slate-400">mmHg</span>
+            {latest.bpSystolic || latest.systolicBP ? `${latest.bpSystolic || latest.systolicBP}/${latest.bpDiastolic || latest.diastolicBP}` : '—'} <span className="text-xs font-normal text-slate-400">mmHg</span>
           </p>
           <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-            Optimal Range (&lt;130/85)
+            Optimal Target (&lt;130/85)
           </span>
         </div>
 
@@ -170,7 +201,7 @@ export const VitalsTrackingPage = () => {
             <Heart className="h-4 w-4 text-rose-500" />
           </div>
           <p className="text-xl font-extrabold text-slate-900">
-            {latest.heartRate || 84} <span className="text-xs font-normal text-slate-400">bpm</span>
+            {latest.heartRate ? `${latest.heartRate}` : '—'} <span className="text-xs font-normal text-slate-400">bpm</span>
           </p>
           <span className="text-[10px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
             Standard Maternal Expansion
@@ -183,7 +214,7 @@ export const VitalsTrackingPage = () => {
             <Droplets className="h-4 w-4 text-purple-600" />
           </div>
           <p className="text-xl font-extrabold text-slate-900">
-            {latest.bloodGlucose || 94} <span className="text-xs font-normal text-slate-400">mg/dL</span>
+            {latest.bloodGlucose ? `${latest.bloodGlucose}` : '—'} <span className="text-xs font-normal text-slate-400">mg/dL</span>
           </p>
           <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
             Target &lt; 95 mg/dL
@@ -196,10 +227,10 @@ export const VitalsTrackingPage = () => {
             <Baby className="h-4 w-4 text-rose-500" />
           </div>
           <p className="text-xl font-extrabold text-slate-900">
-            {latest.fetalKicks || 14} <span className="text-xs font-normal text-slate-400">kicks</span>
+            {latest.fetalKicks !== null && latest.fetalKicks !== undefined ? `${latest.fetalKicks}` : '—'} <span className="text-xs font-normal text-slate-400">kicks</span>
           </p>
           <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-            Goal &gt;= 10 Met ✓
+            {latest.fetalKicks >= 10 ? 'Goal >= 10 Met ✓' : 'Supportive Benchmark'}
           </span>
         </div>
 
@@ -216,7 +247,7 @@ export const VitalsTrackingPage = () => {
               <Plus className="h-4 w-4 text-teal-600" />
               <span>Log Comprehensive Clinical Telemetry</span>
             </h3>
-            <span className="text-xs text-slate-400">All fields evaluated deterministically</span>
+            <span className="text-xs text-slate-400">Evaluated deterministically + MongoDB Stored</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -291,6 +322,29 @@ export const VitalsTrackingPage = () => {
             </div>
 
             <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Temperature (°C)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={formTemp}
+                onChange={(e) => setFormTemp(e.target.value)}
+                placeholder="36.8"
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Oxygen Saturation (% SpO2)</label>
+              <input
+                type="number"
+                value={formO2}
+                onChange={(e) => setFormO2(e.target.value)}
+                placeholder="98"
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Fetal Kicks (in 2 hrs)</label>
               <input
                 type="number"
@@ -302,14 +356,16 @@ export const VitalsTrackingPage = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Water Intake (oz)</label>
-              <input
-                type="number"
-                value={formWater}
-                onChange={(e) => setFormWater(e.target.value)}
-                placeholder="80"
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
-              />
+              <label className="block text-xs font-bold text-slate-700 mb-1">Source</label>
+              <select
+                value={formSource}
+                onChange={(e) => setFormSource(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white"
+              >
+                <option value="manual">Manual Entry</option>
+                <option value="device">Bluetooth Cuff / Device</option>
+                <option value="imported">Clinic Imported</option>
+              </select>
             </div>
           </div>
 
@@ -386,46 +442,61 @@ export const VitalsTrackingPage = () => {
           <span className="text-xs text-slate-400 font-medium">{records.length} records logged</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
-              <tr>
-                <th className="p-3">Week</th>
-                <th className="p-3">Date</th>
-                <th className="p-3">Blood Pressure</th>
-                <th className="p-3">Heart Rate</th>
-                <th className="p-3">Glucose</th>
-                <th className="p-3">Weight</th>
-                <th className="p-3">Kicks (2hr)</th>
-                <th className="p-3">Symptoms</th>
-                <th className="p-3">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium">
-              {[...records].reverse().map((rec, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="p-3 font-bold text-teal-900">Week {rec.week}</td>
-                  <td className="p-3 text-slate-500">
-                    {new Date(rec.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </td>
-                  <td className="p-3 font-semibold text-slate-800">{rec.bpSystolic}/{rec.bpDiastolic} mmHg</td>
-                  <td className="p-3 text-slate-700">{rec.heartRate} bpm</td>
-                  <td className="p-3 text-slate-700">{rec.bloodGlucose ? `${rec.bloodGlucose} mg/dL` : '—'}</td>
-                  <td className="p-3 text-slate-700">{rec.weight ? `${rec.weight} kg` : '—'}</td>
-                  <td className="p-3 text-slate-700">{rec.fetalKicks !== null && rec.fetalKicks !== undefined ? `${rec.fetalKicks} kicks` : '—'}</td>
-                  <td className="p-3 text-slate-600 max-w-xs truncate">
-                    {rec.symptoms && rec.symptoms.length > 0
-                      ? rec.symptoms.map(s => s.name || s).join(', ')
-                      : 'None reported'}
-                  </td>
-                  <td className="p-3">
-                    <RiskBadge level={rec.riskLevel || 'routine'} size="sm" showIcon={false} />
-                  </td>
+        {records.length === 0 ? (
+          <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <p className="text-xs font-semibold text-slate-600">No vitals recorded yet.</p>
+            <p className="text-xs text-slate-400 mt-1">Add your first reading to start tracking.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
+                <tr>
+                  <th className="p-3">Week</th>
+                  <th className="p-3">Date</th>
+                  <th className="p-3">Blood Pressure</th>
+                  <th className="p-3">Heart Rate</th>
+                  <th className="p-3">Glucose</th>
+                  <th className="p-3">Weight</th>
+                  <th className="p-3">Temp / SpO2</th>
+                  <th className="p-3">Kicks (2hr)</th>
+                  <th className="p-3">Symptoms</th>
+                  <th className="p-3">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {[...records].reverse().map((rec, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="p-3 font-bold text-teal-900">Week {rec.week}</td>
+                    <td className="p-3 text-slate-500">
+                      {new Date(rec.date || rec.recordedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </td>
+                    <td className="p-3 font-semibold text-slate-800">
+                      {rec.bpSystolic || rec.systolicBP}/{rec.bpDiastolic || rec.diastolicBP} mmHg
+                    </td>
+                    <td className="p-3 text-slate-700">{rec.heartRate} bpm</td>
+                    <td className="p-3 text-slate-700">{rec.bloodGlucose ? `${rec.bloodGlucose} mg/dL` : '—'}</td>
+                    <td className="p-3 text-slate-700">{rec.weight ? `${rec.weight} kg` : '—'}</td>
+                    <td className="p-3 text-slate-700">
+                      {rec.temperature ? `${rec.temperature}°C` : '—'} / {rec.oxygenSaturation ? `${rec.oxygenSaturation}%` : '—'}
+                    </td>
+                    <td className="p-3 text-slate-700">
+                      {rec.fetalKicks !== null && rec.fetalKicks !== undefined ? `${rec.fetalKicks} kicks` : '—'}
+                    </td>
+                    <td className="p-3 text-slate-600 max-w-xs truncate">
+                      {rec.symptoms && rec.symptoms.length > 0
+                        ? rec.symptoms.map(s => s.name || s).join(', ')
+                        : 'None reported'}
+                    </td>
+                    <td className="p-3">
+                      <RiskBadge level={rec.riskLevel || 'routine'} size="sm" showIcon={false} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
     </div>

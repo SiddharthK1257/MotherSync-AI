@@ -16,14 +16,23 @@ export const Navbar = ({ onToggleSidebar, activeTab, setActiveTab }) => {
   const { user, isDoctor, isPatient, demoLogin, logout, currentRisk } = useAuth();
   const { triggerDirectSOS, isTriggeringSOS } = useEmergencyModal();
 
-  const handleRoleToggle = () => {
-    if (isDoctor) {
-      demoLogin('patient');
-      setActiveTab('dashboard');
-    } else {
-      demoLogin('doctor');
-      setActiveTab('doctor-portal');
+  const handleRoleToggle = async () => {
+    try {
+      if (isDoctor) {
+        await demoLogin('patient');
+        setActiveTab('dashboard');
+      } else {
+        await demoLogin('doctor');
+        setActiveTab('doctor-portal');
+      }
+    } catch (err) {
+      console.error('Role toggle failed:', err);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    setActiveTab('dashboard');
   };
 
   return (
@@ -118,13 +127,13 @@ export const Navbar = ({ onToggleSidebar, activeTab, setActiveTab }) => {
 
             {/* Logout Button */}
             <button
-              onClick={logout}
-              className="flex items-center gap-1 p-2 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 p-2 px-2.5 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors border border-transparent hover:border-red-200"
               title="Log Out"
               aria-label="Log Out"
             >
               <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline text-xs font-medium">Log out</span>
+              <span className="hidden sm:inline text-xs font-semibold">Log out</span>
             </button>
 
           </div>

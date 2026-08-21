@@ -7,7 +7,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 35000,
 });
 
 // Attach JWT token automatically
@@ -31,7 +31,7 @@ api.interceptors.response.use(
   }
 );
 
-// Authentication APIs
+// 1. Authentication APIs
 export const authAPI = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   register: (data) => api.post('/auth/register', data),
@@ -40,7 +40,87 @@ export const authAPI = {
   updateProfile: (data) => api.put('/auth/profile', data),
 };
 
-// Multi-Agent Orchestrator APIs
+// 2. Pregnancy Profile APIs
+export const pregnancyAPI = {
+  getProfile: () => api.get('/pregnancy/profile'),
+  updateProfile: (data) => api.put('/pregnancy/profile', data),
+};
+
+// 3. Dynamic Dashboard & Command Center API
+export const dashboardAPI = {
+  getDashboard: () => api.get('/dashboard'),
+};
+
+// 4. Vitals & Health Telemetry APIs
+export const vitalsAPI = {
+  getVitals: () => api.get('/vitals'),
+  logVital: (vitalData) => api.post('/vitals', vitalData),
+  getAnalytics: () => api.get('/health-records/analytics'),
+};
+
+// Backward-compatible alias
+export const healthAPI = {
+  getHealthRecords: () => api.get('/vitals'),
+  logHealthRecord: (recordData) => api.post('/vitals', recordData),
+  logKickSession: (kickData) => api.post('/kicks', kickData),
+  getAnalytics: () => api.get('/health-records/analytics'),
+};
+
+// 5. Symptoms APIs
+export const symptomsAPI = {
+  getSymptoms: () => api.get('/symptoms'),
+  logSymptom: (symptomData) => api.post('/symptoms', symptomData),
+};
+
+// 6. Fetal Kicks APIs
+export const kicksAPI = {
+  getKicks: () => api.get('/kicks'),
+  logKick: (kickData) => api.post('/kicks', kickData),
+};
+
+// 7. Diagnostic Lab & Ultrasound Reports APIs
+export const labsAPI = {
+  getLabs: () => api.get('/labs'),
+  getLabById: (id) => api.get(`/labs/${id}`),
+  uploadLab: (data) => api.post('/labs', data),
+  uploadFile: (formData) => api.post('/labs/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+};
+
+// Backward-compatible alias
+export const reportAPI = {
+  getReports: () => api.get('/labs'),
+  getReportById: (id) => api.get(`/labs/${id}`),
+  analyzeReport: (reportData) => api.post('/labs', reportData),
+  uploadFile: (formData) => api.post('/reports/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  doctorReviewReport: (id, doctorNotes) => api.post(`/reports/${id}/doctor-review`, { doctorNotes }),
+};
+
+// 8. Appointments & Doctor Prep APIs
+export const appointmentAPI = {
+  getAppointments: () => api.get('/appointments'),
+  createAppointment: (data) => api.post('/appointments', data),
+  deleteAppointment: (id) => api.delete(`/appointments/${id}`),
+  prepareAppointment: (id) => api.post(`/appointments/${id}/prepare`),
+};
+
+// 9. Alerts APIs
+export const alertsAPI = {
+  getAlerts: () => api.get('/alerts'),
+};
+
+// 10. AI & Gemini Care Team APIs
+export const aiAPI = {
+  ask: (question, sessionId = 'default_session', manualAgentOverride = null) =>
+    api.post('/ai/ask', { question, sessionId, manualAgentOverride }),
+  analyzeLab: (rawText, reportType) =>
+    api.post('/ai/analyze-lab', { rawText, reportType }),
+  prepareVisit: () =>
+    api.post('/ai/prepare-visit'),
+  getClinicalSummary: () =>
+    api.post('/ai/clinical-summary'),
+};
+
+// 11. Multi-Agent Orchestrator APIs
 export const agentAPI = {
   getAgentsList: () => api.get('/agents/list'),
   sendChatMessage: (message, manualAgentOverride = null) =>
@@ -49,50 +129,31 @@ export const agentAPI = {
   prepareDoctorQuestions: () => api.post('/agents/prepare-questions'),
 };
 
-// Health Records & Vitals Telemetry APIs
-export const healthAPI = {
-  getHealthRecords: () => api.get('/health-records'),
-  logHealthRecord: (recordData) => api.post('/health-records', recordData),
-  logKickSession: (kickData) => api.post('/health-records/kick', kickData),
-  getAnalytics: () => api.get('/health-records/analytics'),
+// 12. Chat History APIs
+export const chatAPI = {
+  getHistory: (sessionId = 'default_session') => api.get('/chat/history', { params: { sessionId } }),
+  clearHistory: (sessionId = 'default_session') => api.delete('/chat/history', { params: { sessionId } }),
 };
 
-// Diagnostic & Lab Reports APIs
-export const reportAPI = {
-  getReports: () => api.get('/reports'),
-  getReportById: (id) => api.get(`/reports/${id}`),
-  analyzeReport: (reportData) => api.post('/reports/analyze', reportData),
-  doctorReviewReport: (id, doctorNotes) =>
-    api.post(`/reports/${id}/doctor-review`, { doctorNotes }),
-};
-
-// Appointments & Doctor Visit Prep APIs
-export const appointmentAPI = {
-  getAppointments: () => api.get('/appointments'),
-  createAppointment: (data) => api.post('/appointments', data),
-  deleteAppointment: (id) => api.delete(`/appointments/${id}`),
-  prepareAppointment: (id) => api.post(`/appointments/${id}/prepare`),
-};
-
-// 24/7 Maternity Hospitals & Emergency Locator APIs
+// 13. 24/7 Maternity Hospitals & Emergency Locator APIs
 export const hospitalAPI = {
   getNearbyHospitals: (lat, lng, radius) =>
     api.get('/hospitals/nearby', { params: { lat, lng, radius } }),
 };
 
-// Emergency SOS & Incident Logging APIs
+// 14. Emergency SOS & Incident Logging APIs
 export const emergencyAPI = {
   triggerSOS: (data) => api.post('/emergency/sos', data),
   getLogs: () => api.get('/emergency/logs'),
 };
 
-// Doctor Portal APIs
+// 15. Doctor Portal APIs
 export const doctorAPI = {
   getPatients: () => api.get('/doctor/patients'),
   getPatientDossier: (id) => api.get(`/doctor/patient/${id}`),
 };
 
-// Clinical PDF Telemetry Export
+// 16. Clinical PDF Telemetry Export
 export const pdfAPI = {
   getPdfSummaryUrl: () => `${API_BASE_URL}/pdf/summary`,
   downloadPdfSummary: async () => {
@@ -105,7 +166,7 @@ export const pdfAPI = {
   },
 };
 
-// Timeline APIs
+// 17. Timeline APIs
 export const timelineAPI = {
   getTimelineEvents: () => api.get('/timeline'),
 };

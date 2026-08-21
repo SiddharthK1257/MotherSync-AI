@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useEmergencyModal } from '../context/EmergencyModalContext';
-import { agentAPI } from '../services/api';
+import { aiAPI, agentAPI, chatAPI } from '../services/api';
 import VoiceTriageButton from '../components/VoiceTriageButton';
 import RiskBadge from '../components/RiskBadge';
 import {
@@ -20,7 +20,10 @@ import {
   Baby,
   RefreshCw,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Activity,
+  AlertCircle,
+  Database
 } from 'lucide-react';
 
 export const AgentOrchestratorPage = () => {
@@ -32,19 +35,33 @@ export const AgentOrchestratorPage = () => {
       sender: 'agent',
       agentName: 'Supervisor Orchestrator Agent',
       agentId: 'supervisor',
-      content: `Hello ${user?.name || 'Elena'}! 🌸 I am your **MotherSync AI Care Orchestrator**.
-
-I continuously coordinate with **10 specialized clinical domain agents** (Nutrition, Maternal Vitals, Ultrasound & Lab OCR, Heart Health, Prenatal Appointments, and Emergency Triage).
-
-All responses are strictly grounded in authoritative **ACOG & WHO clinical guidelines** and vetted through our deterministic medical safety engine.
-
-How can our team support you today?`,
+      structuredResponse: {
+        directAnswer: `Hello ${user?.name || 'Elena'}! 🌸 I am your MotherSync AI Care Orchestrator.`,
+        dataUsed: [`Gestational Stage: Week ${user?.gestationalWeek || 24}`, 'Longitudinal MongoDB Telemetry', 'ACOG Guidelines'],
+        observations: [
+          'I continuously coordinate with 10 specialized clinical domain agents (Nutrition, Maternal Vitals, Ultrasound & Lab OCR, Heart Health, Prenatal Appointments, and Emergency Triage).',
+          'All responses use your real recorded vitals and lab findings from MongoDB.'
+        ],
+        trend: 'Your health records and vital trends are active in the database.',
+        recommendedNextSteps: [
+          'Ask any questions about your blood pressure, kick counting, lab reports, or nutrition.',
+          'Log new vitals or symptoms anytime to update your telemetry.'
+        ],
+        warningSigns: [
+          'Severe persistent headache, vision changes, acute abdominal pain, or heavy bleeding require immediate clinical evaluation.'
+        ],
+        urgency: 'routine',
+        requiresProfessionalReview: false,
+        emergency: false,
+        disclaimer: 'MotherSync AI is an educational healthcare platform, not a doctor. Always consult your healthcare provider.'
+      },
+      content: `Hello ${user?.name || 'Elena'}! 🌸 I am your **MotherSync AI Care Orchestrator**.\n\nI continuously coordinate with **10 specialized clinical domain agents** using your real recorded data in MongoDB and authoritative ACOG/WHO evidence.`,
       citations: ['ACOG Clinical Guidelines 2026', 'WHO Antenatal Care Standards'],
       suggestedQuestions: [
-        'Is a blood pressure of 124/82 normal for Week 24?',
-        'What foods are richest in prenatal iron and safe to eat?',
+        'Is my blood pressure normal?',
+        'What foods are rich in prenatal iron?',
         'When should I start daily kick counting?',
-        'Explain my 20-week anatomy ultrasound report'
+        'What does my 20-week anatomy ultrasound report mean?'
       ],
       timestamp: new Date()
     }
@@ -91,20 +108,22 @@ How can our team support you today?`,
     setIsProcessing(true);
 
     try {
-      const res = await agentAPI.sendChatMessage(
-        trimmed,
-        selectedAgentOverride || null
-      );
+      // Use structured AI Ask endpoint
+      const res = await aiAPI.ask(trimmed, 'default_session', selectedAgentOverride || null);
 
       if (res.data.success) {
-        const agentData = res.data.data;
+        const responseData = res.data.data;
+        const routedAgent = res.data.routedAgent || 'MotherSync Clinical AI';
+        const agentId = res.data.agentId || 'supervisor';
 
-        // If emergency triage detected red flag, trigger emergency modal automatically
-        if (agentData.isEmergency) {
+        if (responseData.emergency) {
           openEmergencyModal({
             triage: {
-              agentName: agentData.routedAgent,
-              details: agentData.structuredDetails
+              agentName: 'Emergency Triage Agent',
+              details: {
+                urgentInstructions: responseData.recommendedNextSteps,
+                emergencySummary: responseData.directAnswer
+              }
             },
             isLiveSOS: true
           });
@@ -112,13 +131,13 @@ How can our team support you today?`,
 
         const agentMsg = {
           sender: 'agent',
-          agentName: agentData.routedAgent,
-          agentId: agentData.agentId,
-          riskLevel: agentData.riskLevel,
-          badge: agentData.badge,
-          content: agentData.response,
-          citations: agentData.citations || ['ACOG Clinical Guidelines 2026'],
-          suggestedQuestions: agentData.suggestedQuestions || [],
+          agentName: routedAgent,
+          agentId,
+          riskLevel: responseData.urgency || 'routine',
+          structuredResponse: responseData,
+          content: responseData.directAnswer || JSON.stringify(responseData),
+          citations: responseData.citations || ['ACOG Clinical Guidelines (2026)', 'WHO Antenatal Guidelines'],
+          suggestedQuestions: responseData.suggestedFollowUps || [],
           timestamp: new Date()
         };
 
@@ -130,9 +149,9 @@ How can our team support you today?`,
         ...prev,
         {
           sender: 'agent',
-          agentName: 'Knowledge / RAG Agent',
+          agentName: 'Supervisor Care Team',
           agentId: 'fallback',
-          content: `I have received your inquiry. While analyzing your pregnancy context, please note: Always consult your obstetric care provider for any acute symptoms. (Error: ${err.message})`,
+          content: `AI service is temporarily unavailable. Your saved health records are safe. Please try again. (${err.message})`,
           timestamp: new Date()
         }
       ]);
@@ -154,11 +173,11 @@ How can our team support you today?`,
             <div className="flex items-center gap-2">
               <h2 className="font-bold text-base">Multi-Agent Care Orchestrator</h2>
               <span className="text-[10px] bg-teal-400/20 text-teal-200 border border-teal-400/30 px-2 py-0.5 rounded-full font-bold">
-                10 Domain Agents
+                10 Domain Agents (Gemini + MongoDB)
               </span>
             </div>
             <p className="text-xs text-teal-100/80">
-              Live routing • Deterministic Safety Guardrails • ACOG/WHO Grounding
+              Point-to-Point Clinical Answers • Dynamic Patient Context • Deterministic Safety Guardrails
             </p>
           </div>
         </div>
@@ -184,6 +203,7 @@ How can our team support you today?`,
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-slate-50/50">
         {messages.map((msg, idx) => {
           const isUser = msg.sender === 'user';
+          const struct = msg.structuredResponse;
 
           return (
             <div
@@ -212,21 +232,115 @@ How can our team support you today?`,
                     : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none'
                 }`}
               >
-                <div className="whitespace-pre-wrap">{msg.content}</div>
+                {isUser ? (
+                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                ) : struct ? (
+                  /* Point-to-Point Structured AI Output */
+                  <div className="space-y-4">
+                    {/* 1. Direct Answer */}
+                    <div className="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-200/80 text-teal-950 font-medium text-xs leading-relaxed">
+                      <div className="flex items-center gap-1.5 text-teal-900 font-bold mb-1 text-xs">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-teal-600" />
+                        <span>Direct Answer</span>
+                      </div>
+                      <p className="text-slate-800 font-semibold">{struct.directAnswer}</p>
+                    </div>
 
-                {/* Citations Footer */}
-                {msg.citations && msg.citations.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex flex-wrap items-center gap-2">
-                    <span className="font-bold flex items-center gap-1 text-slate-700">
-                      <BookOpen className="h-3.5 w-3.5 text-teal-600" />
-                      <span>Evidence Citations:</span>
-                    </span>
-                    {msg.citations.map((cite, cIdx) => (
-                      <span key={cIdx} className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-medium">
-                        {cite}
-                      </span>
-                    ))}
+                    {/* 2. Data Used from MongoDB */}
+                    {struct.dataUsed && struct.dataUsed.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                          <Database className="h-3 w-3 text-teal-600" />
+                          <span>Data Used From Your Records</span>
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {struct.dataUsed.map((d, dIdx) => (
+                            <span key={dIdx} className="text-[11px] bg-slate-100 text-slate-700 font-medium px-2.5 py-0.5 rounded-lg border border-slate-200">
+                              {d}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 3. Clinical Observations & What It Means */}
+                    {struct.observations && struct.observations.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Clinical Observations
+                        </p>
+                        <ul className="space-y-1 text-xs text-slate-700">
+                          {struct.observations.map((obs, oIdx) => (
+                            <li key={oIdx} className="flex items-start gap-1.5">
+                              <span className="text-teal-600 font-bold">•</span>
+                              <span>{obs}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* 4. Comparison & Trend */}
+                    {struct.trend && (
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700">
+                        <span className="font-bold text-slate-800 flex items-center gap-1 mb-0.5">
+                          <Activity className="h-3.5 w-3.5 text-teal-600" />
+                          <span>Historical Telemetry & Trend:</span>
+                        </span>
+                        <p>{struct.trend}</p>
+                      </div>
+                    )}
+
+                    {/* 5. Recommended Next Steps */}
+                    {struct.recommendedNextSteps && struct.recommendedNextSteps.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Recommended Next Steps
+                        </p>
+                        <ul className="space-y-1 text-xs text-slate-700">
+                          {struct.recommendedNextSteps.map((step, sIdx) => (
+                            <li key={sIdx} className="flex items-start gap-1.5">
+                              <span className="text-teal-600 font-bold">✓</span>
+                              <span>{step}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* 6. Warning Signs to Watch For */}
+                    {struct.warningSigns && struct.warningSigns.length > 0 && (
+                      <div className="p-3 rounded-xl bg-rose-50/70 border border-rose-200 text-xs text-rose-950">
+                        <span className="font-bold flex items-center gap-1 text-rose-800 mb-1">
+                          <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
+                          <span>Warning Signs to Watch For:</span>
+                        </span>
+                        <ul className="space-y-0.5">
+                          {struct.warningSigns.map((w, wIdx) => (
+                            <li key={wIdx} className="flex items-start gap-1 text-[11px]">
+                              <span>•</span>
+                              <span>{w}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Citations Footer */}
+                    {msg.citations && msg.citations.length > 0 && (
+                      <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400 flex flex-wrap items-center gap-1.5">
+                        <BookOpen className="h-3 w-3 text-teal-600" />
+                        <span className="font-bold text-slate-600">Evidence Grounding:</span>
+                        {msg.citations.map((cite, cIdx) => (
+                          <span key={cIdx} className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                            {cite}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <div className="whitespace-pre-wrap">{msg.content}</div>
                 )}
               </div>
 
@@ -253,8 +367,8 @@ How can our team support you today?`,
           <div className="flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-200 max-w-sm shadow-sm animate-pulse">
             <Loader2 className="h-5 w-5 animate-spin text-teal-600" />
             <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-800">Supervisor Routing Intent...</p>
-              <p className="text-[11px] text-slate-500">Querying specialized agent & verifying safety guardrails</p>
+              <p className="text-xs font-bold text-slate-800">Fetching MongoDB Context & Gemini Answer...</p>
+              <p className="text-[11px] text-slate-500">Executing deterministic safety engine & routing to clinical specialist</p>
             </div>
           </div>
         )}

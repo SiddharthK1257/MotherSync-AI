@@ -145,8 +145,10 @@ router.post('/', protect, async (req, res) => {
       glucoseType,
       weight: weight ? Number(weight) : null,
       fetalKicks: fetalKicks !== undefined && fetalKicks !== null ? Number(fetalKicks) : null,
-      symptoms: Array.isArray(symptoms) ? symptoms : [{ name: symptoms, severity: 'mild' }],
-      mood,
+      symptoms: Array.isArray(symptoms)
+        ? symptoms.map(s => typeof s === 'string' ? { name: s, severity: 'mild' } : s)
+        : (symptoms ? [{ name: String(symptoms), severity: 'mild' }] : []),
+      mood: mood || 'Normal',
       waterIntakeOz: Number(waterIntakeOz) || 64,
       notes,
       riskLevel: riskData.riskLevel,

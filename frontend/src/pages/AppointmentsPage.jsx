@@ -202,52 +202,68 @@ export const AppointmentsPage = () => {
       <div className="space-y-4">
         <h2 className="text-base font-bold text-slate-900">Scheduled Prenatal Visits</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {appointments.map((apt) => (
-            <div
-              key={apt._id}
-              className="p-5 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-3 relative overflow-hidden group hover:border-teal-300 transition-all"
+        {appointments.length === 0 ? (
+          <div className="p-8 text-center bg-white rounded-3xl border border-dashed border-slate-300 space-y-2">
+            <Calendar className="h-8 w-8 text-slate-400 mx-auto" />
+            <h3 className="font-bold text-sm text-slate-800">No scheduled prenatal visits</h3>
+            <p className="text-xs text-slate-400">
+              Schedule your upcoming OB/GYN visit, anatomy ultrasound scan, or routine check-in.
+            </p>
+            <button
+              onClick={() => setShowScheduleModal(true)}
+              className="mt-2 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs"
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
-                    {apt.type?.replace('_', ' ')}
-                  </span>
-                  <h3 className="text-sm font-bold text-slate-900 mt-1">{apt.title}</h3>
+              Schedule Prenatal Visit
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {appointments.map((apt) => (
+              <div
+                key={apt._id}
+                className="p-5 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-3 relative overflow-hidden group hover:border-teal-300 transition-all"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
+                      {apt.type?.replace('_', ' ')}
+                    </span>
+                    <h3 className="text-sm font-bold text-slate-900 mt-1">{apt.title}</h3>
+                  </div>
+
+                  <button
+                    onClick={() => handleDeleteAppointment(apt._id)}
+                    className="text-slate-300 hover:text-red-500 p-1.5 transition-colors"
+                    title="Cancel visit"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
 
-                <button
-                  onClick={() => handleDeleteAppointment(apt._id)}
-                  className="text-slate-300 hover:text-red-500 p-1.5 transition-colors"
-                  title="Cancel visit"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="space-y-1.5 text-xs text-slate-600">
-                <p className="flex items-center gap-2">
-                  <Clock className="h-3.5 w-3.5 text-teal-600" />
-                  <span>{new Date(apt.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at {apt.time}</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <Stethoscope className="h-3.5 w-3.5 text-rose-500" />
-                  <span>{apt.doctorName}</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                  <span>{apt.clinicLocation}</span>
-                </p>
-              </div>
-
-              {apt.notes && (
-                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-[11px] text-slate-600">
-                  <span className="font-bold text-slate-700">Notes:</span> {apt.notes}
+                <div className="space-y-1.5 text-xs text-slate-600">
+                  <p className="flex items-center gap-2">
+                    <Clock className="h-3.5 w-3.5 text-teal-600" />
+                    <span>{new Date(apt.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at {apt.time}</span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <Stethoscope className="h-3.5 w-3.5 text-rose-500" />
+                    <span>{apt.doctorName}</span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                    <span>{apt.clinicLocation}</span>
+                  </p>
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+
+                {apt.notes && (
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-[11px] text-slate-600">
+                    <span className="font-bold text-slate-700">Notes:</span> {apt.notes}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Schedule Modal */}

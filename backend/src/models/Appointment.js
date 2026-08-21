@@ -5,7 +5,7 @@ const appointmentSchema = new mongoose.Schema({
   title: { type: String, required: true },
   type: {
     type: String,
-    enum: ['routine_prenatal', 'anomaly_scan', 'glucose_tolerance', 'non_stress_test', 'blood_test', 'consultation', 'pediatric_intro', 'other'],
+    enum: ['routine_prenatal', 'routine', 'ultrasound', 'anomaly_scan', 'glucose_tolerance', 'non_stress_test', 'blood_test', 'consultation', 'follow_up', 'pediatric_intro', 'other'],
     default: 'routine_prenatal'
   },
   date: { type: Date, required: true },

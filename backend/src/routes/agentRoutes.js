@@ -73,6 +73,15 @@ router.post('/chat', protect, async (req, res) => {
       manualAgentOverride
     });
 
+    const DBDataService = require('../services/dbDataService');
+    await DBDataService.logAgentEvent({
+      userId: userProfile._id,
+      requestType: 'chat_query',
+      selectedAgent: orchestratorResult.routedAgent || 'Supervisor',
+      riskLevel: orchestratorResult.riskLevel || 'routine',
+      action: orchestratorResult.isEmergency ? 'emergency_triage_routed' : 'answered'
+    });
+
     res.json({
       success: true,
       data: orchestratorResult

@@ -116,33 +116,39 @@ export const DoctorPortalPage = ({ setActiveTab }) => {
           </div>
 
           <div className="space-y-2">
-            {patients.map((pat) => (
-              <div
-                key={pat._id}
-                onClick={() => handleSelectPatient(pat._id)}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                  selectedPatientId === pat._id
-                    ? 'bg-indigo-50/70 border-indigo-300 shadow-sm ring-2 ring-indigo-500/20'
-                    : 'bg-white border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-bold text-sm text-slate-900">{pat.name}</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Week {pat.gestationalWeek} • Due {new Date(pat.dueDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                    </p>
+            {patients.length === 0 ? (
+              <div className="p-6 rounded-2xl bg-white border border-slate-200 text-center text-slate-400 text-xs">
+                No registered patients found in clinical roster.
+              </div>
+            ) : (
+              patients.map((pat) => (
+                <div
+                  key={pat._id}
+                  onClick={() => handleSelectPatient(pat._id)}
+                  className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                    selectedPatientId === pat._id
+                      ? 'bg-indigo-50/70 border-indigo-300 shadow-sm ring-2 ring-indigo-500/20'
+                      : 'bg-white border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-900">{pat.name}</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Week {pat.gestationalWeek} • Due {new Date(pat.dueDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+
+                    <RiskBadge level={pat.riskStatus?.riskLevel || 'routine'} size="sm" showIcon={false} />
                   </div>
 
-                  <RiskBadge level={pat.riskStatus?.riskLevel || 'routine'} size="sm" showIcon={false} />
+                  <div className="mt-3 pt-2 border-t border-slate-100/80 flex items-center justify-between text-xs text-slate-600">
+                    <span>Latest BP: <strong>{pat.latestVitals?.bp || '120/80'}</strong></span>
+                    <span>HR: <strong>{pat.latestVitals?.hr || '80 bpm'}</strong></span>
+                  </div>
                 </div>
-
-                <div className="mt-3 pt-2 border-t border-slate-100/80 flex items-center justify-between text-xs text-slate-600">
-                  <span>Latest BP: <strong>{pat.latestVitals?.bp || '124/82'}</strong></span>
-                  <span>HR: <strong>{pat.latestVitals?.hr || '84 bpm'}</strong></span>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 

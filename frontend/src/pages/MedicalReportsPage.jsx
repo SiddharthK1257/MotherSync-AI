@@ -12,7 +12,11 @@ import {
   ChevronDown,
   ChevronUp,
   FileCheck,
-  Calendar
+  Calendar,
+  Baby,
+  Activity,
+  ShieldCheck,
+  Clock
 } from 'lucide-react';
 
 export const MedicalReportsPage = () => {
@@ -28,7 +32,7 @@ export const MedicalReportsPage = () => {
   const fetchReports = async () => {
     try {
       const res = await reportAPI.getReports();
-      if (res.data.success) {
+      if (res.data?.success) {
         setReports(res.data.data);
         if (res.data.data.length > 0) {
           setExpandedId(res.data.data[0]._id);
@@ -42,7 +46,7 @@ export const MedicalReportsPage = () => {
   };
 
   const handleReportAnalyzed = (newReport) => {
-    setReports(prev => [newReport, ...prev]);
+    setReports((prev) => [newReport, ...prev]);
     setExpandedId(newReport._id);
   };
 
@@ -54,10 +58,10 @@ export const MedicalReportsPage = () => {
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
             <FileText className="h-6 w-6 text-teal-600" />
-            <span>Diagnostic Reports & Lab AI Interpreter</span>
+            <span>Lab & Ultrasound AI Analysis</span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            AI-powered plain language translation, structured lab extraction & physician talking points
+            Multimodal OCR document ingestion, structured biomarker extraction & clinician talking points
           </p>
         </div>
 
@@ -72,16 +76,22 @@ export const MedicalReportsPage = () => {
 
       {/* Reports Stream */}
       <div className="space-y-4">
-        {reports.length === 0 ? (
-          <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 space-y-3">
-            <FileText className="h-10 w-10 text-slate-300 mx-auto" />
-            <h3 className="font-bold text-slate-700">No medical reports uploaded yet</h3>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Upload your 20-week anatomy ultrasound scan, CBC blood count, or glucose test to get an instant AI breakdown.
+        {loading ? (
+          <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-400 text-xs">
+            Loading diagnostic reports from database...
+          </div>
+        ) : reports.length === 0 ? (
+          <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-300 space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mx-auto border border-teal-100">
+              <FileText className="h-6 w-6" />
+            </div>
+            <h3 className="font-bold text-slate-800 text-sm">No health records available yet</h3>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              Add your first vital reading or upload a medical report (PDF, JPG, PNG, WEBP) such as an anatomy ultrasound scan, CBC blood test, or OGTT screen.
             </p>
             <button
               onClick={() => setIsUploadOpen(true)}
-              className="px-4 py-2 rounded-xl bg-teal-600 text-white text-xs font-bold"
+              className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm"
             >
               Upload First Report
             </button>
@@ -89,6 +99,7 @@ export const MedicalReportsPage = () => {
         ) : (
           reports.map((rep) => {
             const isExpanded = expandedId === rep._id;
+            const isUltrasound = rep.type === 'ultrasound' || String(rep.title).toLowerCase().includes('ultrasound') || String(rep.title).toLowerCase().includes('scan');
 
             return (
               <div
@@ -101,24 +112,33 @@ export const MedicalReportsPage = () => {
                   className="p-5 cursor-pointer flex items-center justify-between hover:bg-slate-50/60 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-teal-50 text-teal-700 border border-teal-200">
-                      <FileCheck className="h-5 w-5" />
+                    <div className={`p-2.5 rounded-2xl border ${
+                      isUltrasound 
+                        ? 'bg-rose-50 text-rose-700 border-rose-200' 
+                        : 'bg-teal-50 text-teal-700 border-teal-200'
+                    }`}>
+                      {isUltrasound ? <Baby className="h-5 w-5" /> : <FileCheck className="h-5 w-5" />}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <h3 className="font-bold text-sm text-slate-900">{rep.title}</h3>
                         <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
                           {rep.type?.replace('_', ' ')}
                         </span>
-                        {rep.doctorReviewed && (
+                        {rep.doctorReviewed ? (
                           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
                             <CheckCircle2 className="h-3 w-3" />
                             <span>Doctor Reviewed</span>
                           </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <span>Awaiting Clinical Review</span>
+                          </span>
                         )}
                       </div>
                       <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
-                        <span>Uploaded {new Date(rep.dateUploaded).toLocaleDateString()}</span>
+                        <span>Uploaded {new Date(rep.dateUploaded || rep.createdAt || Date.now()).toLocaleDateString()}</span>
                         {rep.fileName && <span>• {rep.fileName}</span>}
                       </p>
                     </div>
@@ -126,7 +146,7 @@ export const MedicalReportsPage = () => {
 
                   <div className="flex items-center gap-3">
                     <span className="hidden sm:inline-flex text-xs font-semibold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-xl">
-                      {rep.structuredFindings?.length || 0} Findings Extracted
+                      {rep.structuredFindings?.length || (isUltrasound ? 'Sonogram' : 0)} Parameters Extracted
                     </span>
                     {isExpanded ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
                   </div>
@@ -136,7 +156,7 @@ export const MedicalReportsPage = () => {
                 {isExpanded && (
                   <div className="p-6 border-t border-slate-100 bg-slate-50/40 space-y-6">
                     
-                    {/* Layman Plain Language Summary */}
+                    {/* Plain Language Summary */}
                     <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-50 to-rose-50/50 border border-teal-200/70 space-y-1.5">
                       <div className="flex items-center gap-2 text-teal-900 font-bold text-xs">
                         <Sparkles className="h-4 w-4 text-teal-600" />
@@ -147,11 +167,46 @@ export const MedicalReportsPage = () => {
                       </p>
                     </div>
 
+                    {/* Ultrasound Specific Details Grid (If Ultrasound) */}
+                    {isUltrasound && rep.ultrasoundDetails && (
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Ultrasound Biometric & Anatomical Findings
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                          {rep.ultrasoundDetails.fetalHeartRate && (
+                            <div className="p-3 bg-white rounded-xl border border-slate-200">
+                              <p className="text-[10px] uppercase font-bold text-slate-400">Fetal Heart Rhythm</p>
+                              <p className="font-bold text-slate-900 mt-0.5">{rep.ultrasoundDetails.fetalHeartRate}</p>
+                            </div>
+                          )}
+                          {rep.ultrasoundDetails.amnioticFluid && (
+                            <div className="p-3 bg-white rounded-xl border border-slate-200">
+                              <p className="text-[10px] uppercase font-bold text-slate-400">Amniotic Fluid Index</p>
+                              <p className="font-bold text-slate-900 mt-0.5">{rep.ultrasoundDetails.amnioticFluid}</p>
+                            </div>
+                          )}
+                          {rep.ultrasoundDetails.placenta && (
+                            <div className="p-3 bg-white rounded-xl border border-slate-200">
+                              <p className="text-[10px] uppercase font-bold text-slate-400">Placental Position</p>
+                              <p className="font-bold text-slate-900 mt-0.5">{rep.ultrasoundDetails.placenta}</p>
+                            </div>
+                          )}
+                          {rep.ultrasoundDetails.estimatedFetalWeight && (
+                            <div className="p-3 bg-white rounded-xl border border-slate-200">
+                              <p className="text-[10px] uppercase font-bold text-slate-400">Estimated Fetal Weight</p>
+                              <p className="font-bold text-slate-900 mt-0.5">{rep.ultrasoundDetails.estimatedFetalWeight}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Structured Findings Table */}
                     {rep.structuredFindings && rep.structuredFindings.length > 0 && (
                       <div className="space-y-2">
                         <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                          Structured Clinical Findings & Reference Intervals
+                          Structured Clinical Parameters & Reference Intervals
                         </h4>
                         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
                           <table className="w-full text-left text-xs">
@@ -168,7 +223,9 @@ export const MedicalReportsPage = () => {
                                 <tr key={fIdx} className="hover:bg-slate-50/50">
                                   <td className="p-3 font-semibold text-slate-800">{finding.parameter}</td>
                                   <td className="p-3 font-bold text-teal-900">{finding.value} {finding.unit}</td>
-                                  <td className="p-3 text-slate-500">{finding.referenceRange || 'Standard range'}</td>
+                                  <td className="p-3 text-slate-500">
+                                    {finding.referenceRange || 'Reference range not provided on uploaded report'}
+                                  </td>
                                   <td className="p-3">
                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                                       finding.status === 'abnormal' || finding.status === 'critical'
@@ -193,7 +250,7 @@ export const MedicalReportsPage = () => {
                       <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-2">
                         <div className="flex items-center gap-2 text-slate-900 font-bold text-xs">
                           <HelpCircle className="h-4 w-4 text-teal-600" />
-                          <span>Recommended Questions for Your Next Prenatal Visit</span>
+                          <span>Personalized Questions for Your Doctor</span>
                         </div>
                         <ul className="space-y-1.5">
                           {rep.questionsForDoctor.map((q, qIdx) => (
@@ -216,6 +273,11 @@ export const MedicalReportsPage = () => {
                         <p className="text-xs text-indigo-950">{rep.doctorNotes}</p>
                       </div>
                     )}
+
+                    {/* Mandatory Clinical Disclaimer */}
+                    <div className="p-3 rounded-xl bg-slate-100 border border-slate-200 text-[11px] text-slate-500 italic">
+                      Based on the uploaded report, these findings were extracted. Please discuss the clinical interpretation with your obstetrician or midwife.
+                    </div>
 
                   </div>
                 )}

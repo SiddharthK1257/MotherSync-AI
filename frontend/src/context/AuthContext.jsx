@@ -3,15 +3,17 @@ import { authAPI, healthAPI } from '../services/api';
 
 const AuthContext = createContext(null);
 
+const DEFAULT_RISK = {
+  riskLevel: 'routine',
+  badge: { color: 'green', label: 'Routine Monitoring', code: '🟢' },
+  summaryRationale: 'Vital signs within normal physiological ranges for current trimester.'
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('mothersync_token'));
   const [loading, setLoading] = useState(true);
-  const [currentRisk, setCurrentRisk] = useState({
-    riskLevel: 'routine',
-    badge: { color: 'green', label: 'Routine Monitoring', code: '🟢' },
-    summaryRationale: 'Vital signs within normal physiological ranges for current trimester.'
-  });
+  const [currentRisk, setCurrentRisk] = useState(DEFAULT_RISK);
 
   // Initialize or fetch user profile on app start
   useEffect(() => {
@@ -20,7 +22,7 @@ export const AuthProvider = ({ children }) => {
       if (savedToken && savedToken !== 'null' && savedToken !== 'undefined') {
         try {
           const res = await authAPI.getProfile();
-          if (res.data.success && res.data.user) {
+          if (res.data?.success && res.data?.user) {
             setUser(res.data.user);
             setToken(savedToken);
           } else {
@@ -63,6 +65,9 @@ export const AuthProvider = ({ children }) => {
         setUser(res.data.user);
       }
       return res.data;
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Login failed';
+      throw new Error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -78,6 +83,9 @@ export const AuthProvider = ({ children }) => {
         setUser(res.data.user);
       }
       return res.data;
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Registration failed';
+      throw new Error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -94,8 +102,9 @@ export const AuthProvider = ({ children }) => {
       }
       return res.data;
     } catch (err) {
-      console.error('Demo login error:', err);
-      throw err;
+      const errorMsg = err.response?.data?.message || err.message || 'Demo login failed';
+      console.error('Demo login error:', errorMsg);
+      throw new Error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -105,6 +114,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('mothersync_token');
     setToken(null);
     setUser(null);
+    setCurrentRisk(DEFAULT_RISK);
   };
 
   const handleUpdateProfile = async (updates) => {
@@ -116,7 +126,8 @@ export const AuthProvider = ({ children }) => {
       return res.data;
     } catch (err) {
       console.error('Update profile error:', err);
-      throw err;
+      const errorMsg = err.response?.data?.message || err.message || 'Update profile failed';
+      throw new Error(errorMsg);
     }
   };
 

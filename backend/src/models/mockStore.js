@@ -5,7 +5,7 @@ const mockStore = {
       _id: 'usr_elena_vance_01',
       name: 'Elena Vance',
       email: 'elena@mothersync.ai',
-      password: '$2a$10$YourHashedPasswordHerePlaceholder',
+      password: '$2b$10$6F59Z3nHIK6rpDxdUPNs6uWb1Y3b34l.BlczHluPn8ogpGFfLh8Xy',
       role: 'patient',
       phone: '+1 (555) 342-8921',
       gestationalWeek: 24,
@@ -72,7 +72,7 @@ const mockStore = {
       _id: 'usr_dr_jenkins_02',
       name: 'Dr. Sarah Jenkins, MD (FACOG)',
       email: 'doctor@mothersync.ai',
-      password: '$2a$10$YourHashedPasswordHerePlaceholder',
+      password: '$2b$10$wFw7i84jq.jGQWxQaddtsOPa0QJWqnwTNbqlMm29Q1jg6ahf7h8mC',
       role: 'doctor',
       phone: '+1 (555) 902-1200',
       doctorInfo: {

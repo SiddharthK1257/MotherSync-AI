@@ -18,6 +18,12 @@ import {
 export const Sidebar = ({ activeTab, setActiveTab, isOpen, onClose }) => {
   const { user, isDoctor, logout } = useAuth();
 
+  const handleLogout = () => {
+    logout();
+    setActiveTab('dashboard');
+    onClose?.();
+  };
+
   const patientNavItems = [
     { id: 'dashboard', label: 'Pregnancy Command Center', icon: LayoutDashboard, badge: 'Live' },
     { id: 'agents', label: 'AI Care Team (10 Agents)', icon: Bot, badge: 'ACOG' },
@@ -132,7 +138,7 @@ export const Sidebar = ({ activeTab, setActiveTab, isOpen, onClose }) => {
               </div>
             </div>
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
               title="Log Out"
             >

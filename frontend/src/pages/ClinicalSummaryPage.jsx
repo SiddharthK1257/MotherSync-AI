@@ -134,18 +134,18 @@ export const ClinicalSummaryPage = () => {
           <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
             <div>
               <p className="font-bold text-slate-400 uppercase text-[10px]">Patient Name</p>
-              <p className="font-bold text-sm text-slate-900 mt-0.5">{user?.name || 'Elena Vance'}</p>
-              <p className="text-slate-500">Age: 29 yrs | G1P0</p>
+              <p className="font-bold text-sm text-slate-900 mt-0.5">{user?.name || 'Patient'}</p>
+              <p className="text-slate-500">Blood Group: {user?.bloodGroup || 'O+'} | G1P0</p>
             </div>
             <div>
               <p className="font-bold text-slate-400 uppercase text-[10px]">Gestational Stage</p>
               <p className="font-bold text-sm text-slate-900 mt-0.5">Week {user?.gestationalWeek || 24}</p>
-              <p className="text-slate-500">Trimester {user?.currentTrimester || 2}</p>
+              <p className="text-slate-500">Trimester {user?.gestationalWeek <= 13 ? 1 : user?.gestationalWeek <= 27 ? 2 : 3}</p>
             </div>
             <div>
               <p className="font-bold text-slate-400 uppercase text-[10px]">Estimated Due Date</p>
               <p className="font-bold text-sm text-slate-900 mt-0.5">
-                {user?.dueDate ? new Date(user.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Late Nov 2026'}
+                {user?.dueDate ? new Date(user.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Calculated based on LMP'}
               </p>
               <p className="text-slate-500">Singleton Gestation</p>
             </div>
@@ -163,7 +163,7 @@ export const ClinicalSummaryPage = () => {
                 Safety Engine Status Stratification
               </p>
               <h3 className="font-bold text-sm text-emerald-950 mt-0.5">
-                {currentRisk?.badge?.label || 'ROUTINE MONITORING 🟢'}
+                {currentRisk?.badge?.label || 'ROUTINE MONITORING'}
               </h3>
               <p className="text-xs text-emerald-800 mt-0.5">
                 {currentRisk?.summaryRationale || 'Vital signs within normal physiological reference ranges for current gestational stage.'}
@@ -193,19 +193,27 @@ export const ClinicalSummaryPage = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {(records.slice(-5)).map((r, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50">
-                      <td className="p-2.5 font-bold text-teal-900">Wk {r.week}</td>
-                      <td className="p-2.5 text-slate-500">{new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
-                      <td className="p-2.5 font-semibold text-slate-800">{r.bpSystolic}/{r.bpDiastolic}</td>
-                      <td className="p-2.5 text-slate-700">{r.heartRate} bpm</td>
-                      <td className="p-2.5 text-slate-700">{r.bloodGlucose ? `${r.bloodGlucose} mg/dL` : '—'}</td>
-                      <td className="p-2.5 text-slate-700">{r.weight ? `${r.weight} kg` : '—'}</td>
-                      <td className="p-2.5 text-slate-600">
-                        {r.symptoms?.length > 0 ? r.symptoms.map(s => s.name || s).join(', ') : 'None'}
+                  {records.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="p-6 text-center text-slate-400 text-xs italic">
+                        No health records available yet. Add your first vital reading or upload a medical report.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    records.slice(-5).map((r, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50">
+                        <td className="p-2.5 font-bold text-teal-900">Wk {r.week || user?.gestationalWeek || 24}</td>
+                        <td className="p-2.5 text-slate-500">{new Date(r.date || r.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
+                        <td className="p-2.5 font-semibold text-slate-800">{r.bpSystolic}/{r.bpDiastolic}</td>
+                        <td className="p-2.5 text-slate-700">{r.heartRate} bpm</td>
+                        <td className="p-2.5 text-slate-700">{r.bloodGlucose ? `${r.bloodGlucose} mg/dL` : '—'}</td>
+                        <td className="p-2.5 text-slate-700">{r.weight ? `${r.weight} kg` : '—'}</td>
+                        <td className="p-2.5 text-slate-600">
+                          {r.symptoms?.length > 0 ? r.symptoms.map(s => s.name || s).join(', ') : 'None'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -218,14 +226,25 @@ export const ClinicalSummaryPage = () => {
               <span>Diagnostic Lab & Ultrasound Highlights</span>
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {reports.slice(0, 2).map((rep) => (
-                <div key={rep._id} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
-                  <p className="font-bold text-slate-900">{rep.title}</p>
-                  <p className="text-slate-600 leading-snug">{rep.aiSummary}</p>
-                </div>
-              ))}
-            </div>
+            {reports.length === 0 ? (
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 text-xs italic text-center">
+                No uploaded laboratory or ultrasound reports yet. Upload a report in the Medical Reports module to extract clinical biomarkers.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {reports.slice(0, 4).map((rep) => (
+                  <div key={rep._id} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-slate-900">{rep.title}</p>
+                      <span className="text-[10px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded">
+                        {rep.type?.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <p className="text-slate-600 leading-snug">{rep.aiSummary}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Tailored Questions for Doctor */}
@@ -233,10 +252,10 @@ export const ClinicalSummaryPage = () => {
             <h3 className="text-xs font-bold uppercase tracking-wider text-teal-900">
               Recommended Questions for Clinician Discussion
             </h3>
-            <ol className="list-decimal list-inside space-y-1 text-xs text-teal-950 font-medium">
-              <li>Are my recent blood pressure and resting pulse patterns in line with second-trimester expansion?</li>
-              <li>Do my ferritin iron levels require continuation or timing adjustment of oral supplementation?</li>
-              <li>What specific preparation or fasting protocol is requested for the 26-week glucose screening?</li>
+            <ol className="list-decimal list-inside space-y-1.5 text-xs text-teal-950 font-medium">
+              <li>Are my latest recorded blood pressure ({records.length > 0 ? `${records[records.length - 1].bpSystolic}/${records[records.length - 1].bpDiastolic} mmHg` : 'readings'}) and resting pulse within expected physiological ranges for Week {user?.gestationalWeek || 24}?</li>
+              <li>Do my recent laboratory findings and hemoglobin/ferritin values warrant adjustments to prenatal iron or multivitamin supplementation?</li>
+              <li>What specific clinical preparation and testing protocols are recommended for my upcoming gestational milestones?</li>
             </ol>
           </div>
 

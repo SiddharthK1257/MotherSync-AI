@@ -7,18 +7,22 @@ let mockDbMode = false;
 const seedInitialDataIfEmpty = async () => {
   try {
     const User = require('../models/User');
+    const PregnancyProfile = require('../models/PregnancyProfile');
     const HealthRecord = require('../models/HealthRecord');
+    const Symptom = require('../models/Symptom');
+    const FetalKickRecord = require('../models/FetalKickRecord');
     const MedicalReport = require('../models/MedicalReport');
     const Appointment = require('../models/Appointment');
     const TimelineEvent = require('../models/TimelineEvent');
+    const Alert = require('../models/Alert');
 
     const userCount = await User.countDocuments();
     if (userCount > 0) {
-      console.log(`ℹ️ [MongoDB] Database already populated with ${userCount} users.`);
+      console.log(`ℹ️ [MongoDB Atlas] Database already populated with ${userCount} users.`);
       return;
     }
 
-    console.log('🌱 [MongoDB] Seeding initial clinical datasets and demo patient/physician profiles...');
+    console.log('🌱 [MongoDB Atlas] Seeding initial clinical datasets and demo patient/physician profiles [DEMO / SYNTHETIC DATA]...');
 
     // 1. Create Patient Elena Vance
     const elena = await User.create({
@@ -28,7 +32,8 @@ const seedInitialDataIfEmpty = async () => {
       role: 'patient',
       phone: '+1 (555) 342-8921',
       gestationalWeek: 24,
-      dueDate: new Date(Date.now() + 112 * 24 * 60 * 60 * 1000),
+      pregnancyStartDate: new Date(Date.now() - 24 * 7 * 24 * 60 * 60 * 1000),
+      dueDate: new Date(Date.now() + 16 * 7 * 24 * 60 * 60 * 1000),
       currentTrimester: 2,
       pregnancyHistory: {
         gravida: 1,
@@ -39,6 +44,7 @@ const seedInitialDataIfEmpty = async () => {
         age: 29,
         heightCm: 168,
         weightKg: 68.5,
+        bloodGroup: 'O+',
         medicalHistory: ['Mild seasonal allergies'],
         allergies: ['Penicillin'],
         currentMedications: ['Prenatal Multivitamin with DHA', 'Iron Supplement (Ferrous Sulfate 65mg)'],
@@ -87,7 +93,37 @@ const seedInitialDataIfEmpty = async () => {
       onboardingCompleted: true
     });
 
-    // 2. Create Doctor Sarah Jenkins
+    const elenaId = elena._id;
+
+    // 2. Create PregnancyProfile for Elena
+    const profile = await PregnancyProfile.create({
+      userId: elenaId,
+      pregnancyStartDate: new Date(Date.now() - 24 * 7 * 24 * 60 * 60 * 1000),
+      estimatedDueDate: new Date(Date.now() + 16 * 7 * 24 * 60 * 60 * 1000),
+      gestationalWeek: 24,
+      trimester: 2,
+      age: 29,
+      height: 168,
+      prePregnancyWeight: 64.0,
+      currentWeight: 68.5,
+      bloodGroup: 'O+',
+      knownConditions: [],
+      allergies: ['Penicillin'],
+      previousPregnancies: 0,
+      previousComplications: [],
+      currentMedications: ['Prenatal Multivitamin with DHA', 'Iron Supplement (Ferrous Sulfate 65mg)'],
+      careProvider: {
+        name: 'Dr. Sarah Jenkins, MD (FACOG)',
+        clinic: 'St. Jude Maternal-Fetal Medicine Center',
+        email: 'dr.jenkins@stjudematernal.org',
+        phone: '+1 (555) 902-1200'
+      }
+    });
+
+    elena.pregnancyProfileId = profile._id;
+    await elena.save();
+
+    // 3. Create Doctor Sarah Jenkins
     await User.create({
       name: 'Dr. Sarah Jenkins, MD (FACOG)',
       email: 'doctor@mothersync.ai',
@@ -102,20 +138,22 @@ const seedInitialDataIfEmpty = async () => {
       onboardingCompleted: true
     });
 
-    const elenaId = elena._id;
-
-    // 3. Seed Elena's Health Records
+    // 4. Seed HealthRecords / Vitals Telemetry
     await HealthRecord.insertMany([
       {
         userId: elenaId,
         week: 16,
         date: new Date(Date.now() - 56 * 24 * 60 * 60 * 1000),
+        recordedAt: new Date(Date.now() - 56 * 24 * 60 * 60 * 1000),
         bpSystolic: 116,
         bpDiastolic: 74,
         heartRate: 74,
         bloodGlucose: 88,
         glucoseType: 'fasting',
         weight: 64.8,
+        temperature: 36.6,
+        oxygenSaturation: 99,
+        source: 'manual',
         symptoms: [{ name: 'Mild morning nausea', severity: 'mild', notes: 'Subsided by lunchtime' }],
         mood: 'Good',
         waterIntakeOz: 72,
@@ -127,13 +165,17 @@ const seedInitialDataIfEmpty = async () => {
         userId: elenaId,
         week: 18,
         date: new Date(Date.now() - 42 * 24 * 60 * 60 * 1000),
+        recordedAt: new Date(Date.now() - 42 * 24 * 60 * 60 * 1000),
         bpSystolic: 118,
         bpDiastolic: 76,
         heartRate: 78,
         bloodGlucose: 90,
         glucoseType: 'fasting',
         weight: 65.5,
+        temperature: 36.7,
+        oxygenSaturation: 98,
         fetalKicks: 4,
+        source: 'manual',
         symptoms: [{ name: 'Lower back stiffness', severity: 'mild', notes: 'After prolonged sitting' }],
         mood: 'Energized',
         waterIntakeOz: 80,
@@ -145,13 +187,17 @@ const seedInitialDataIfEmpty = async () => {
         userId: elenaId,
         week: 20,
         date: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
+        recordedAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
         bpSystolic: 120,
         bpDiastolic: 78,
         heartRate: 80,
         bloodGlucose: 94,
         glucoseType: 'fasting',
         weight: 66.4,
+        temperature: 36.8,
+        oxygenSaturation: 98,
         fetalKicks: 8,
+        source: 'manual',
         symptoms: [{ name: 'Leg cramps during sleep', severity: 'mild', notes: 'Calf muscle tension' }],
         mood: 'Happy',
         waterIntakeOz: 88,
@@ -163,13 +209,17 @@ const seedInitialDataIfEmpty = async () => {
         userId: elenaId,
         week: 22,
         date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        recordedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
         bpSystolic: 122,
         bpDiastolic: 80,
         heartRate: 82,
         bloodGlucose: 96,
         glucoseType: 'fasting',
         weight: 67.3,
+        temperature: 36.8,
+        oxygenSaturation: 99,
         fetalKicks: 12,
+        source: 'manual',
         symptoms: [{ name: 'Mild ankle edema', severity: 'mild', notes: 'Noticeable towards evening' }],
         mood: 'Good',
         waterIntakeOz: 92,
@@ -181,13 +231,17 @@ const seedInitialDataIfEmpty = async () => {
         userId: elenaId,
         week: 24,
         date: new Date(),
+        recordedAt: new Date(),
         bpSystolic: 124,
         bpDiastolic: 82,
         heartRate: 84,
         bloodGlucose: 98,
         glucoseType: 'fasting',
         weight: 68.5,
+        temperature: 36.8,
+        oxygenSaturation: 98,
         fetalKicks: 14,
+        source: 'manual',
         symptoms: [{ name: 'Occasional mild heartburn', severity: 'mild', notes: 'After evening dinner' }],
         mood: 'Relaxed & Well',
         waterIntakeOz: 96,
@@ -197,7 +251,49 @@ const seedInitialDataIfEmpty = async () => {
       }
     ]);
 
-    // 4. Seed Medical Reports
+    // 5. Seed Symptoms Collection
+    await Symptom.insertMany([
+      {
+        userId: elenaId,
+        recordedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        symptom: 'Mild ankle edema',
+        severity: 'mild',
+        duration: 'Evening hours',
+        description: 'Bilateral ankle puffiness after sitting at desk.',
+        associatedSymptoms: ['Mild fatigue'],
+        status: 'monitored'
+      },
+      {
+        userId: elenaId,
+        recordedAt: new Date(),
+        symptom: 'Occasional mild heartburn',
+        severity: 'mild',
+        duration: '30 mins post-meal',
+        description: 'Mild esophageal reflux sensation after spiced dinner.',
+        associatedSymptoms: [],
+        status: 'active'
+      }
+    ]);
+
+    // 6. Seed Fetal Kick Records
+    await FetalKickRecord.insertMany([
+      {
+        userId: elenaId,
+        recordedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+        duration: 120,
+        kickCount: 12,
+        notes: 'Active movement session following evening dinner.'
+      },
+      {
+        userId: elenaId,
+        recordedAt: new Date(),
+        duration: 120,
+        kickCount: 14,
+        notes: 'Distinct rolls and kicks felt while resting on left side.'
+      }
+    ]);
+
+    // 7. Seed Medical Reports
     await MedicalReport.insertMany([
       {
         userId: elenaId,
@@ -254,7 +350,7 @@ const seedInitialDataIfEmpty = async () => {
       }
     ]);
 
-    // 5. Seed Appointments
+    // 8. Seed Appointments
     await Appointment.insertMany([
       {
         userId: elenaId,
@@ -289,7 +385,21 @@ const seedInitialDataIfEmpty = async () => {
       }
     ]);
 
-    // 6. Seed Timeline Events
+    // 9. Seed Alerts
+    await Alert.insertMany([
+      {
+        userId: elenaId,
+        createdAt: new Date(),
+        severity: 'routine',
+        category: 'routine_check',
+        message: 'Week 24 maternal vitals and kick sessions within normal physiological parameters.',
+        recommendedAction: 'Continue weekly home BP monitoring and daily prenatal vitamins.',
+        status: 'active',
+        source: 'safety_engine'
+      }
+    ]);
+
+    // 10. Seed Timeline Events
     await TimelineEvent.insertMany([
       {
         userId: elenaId,
@@ -329,23 +439,23 @@ const seedInitialDataIfEmpty = async () => {
       }
     ]);
 
-    console.log('✅ [MongoDB] Initial clinical dataset and user profiles seeded successfully.');
+    console.log('✅ [MongoDB Atlas] Synthetic demo clinical dataset [DEMO / SYNTHETIC DATA] seeded successfully.');
   } catch (seedErr) {
-    console.error('⚠️ [MongoDB Seed Warning]:', seedErr.message);
+    console.error('⚠️ [MongoDB Atlas Seed Warning]:', seedErr.message);
   }
 };
 
 const connectDB = async () => {
   const uri = process.env.MONGODB_URI;
 
-  if (!uri || uri.includes('<db_password>')) {
+  if (!uri || uri.includes('<db_password>') || uri.includes('<password>')) {
     console.warn(`
 ╔═════════════════════════════════════════════════════════════════════════════════╗
-║ ⚠️ [MongoDB Notice]                                                             ║
-║ MONGODB_URI contains '<db_password>'.                                           ║
-║ To connect directly to your MongoDB Atlas cluster:                              ║
-║ 1. Open 'backend/.env'                                                          ║
-║ 2. Replace '<db_password>' with your MongoDB Atlas database user password       ║
+║ ⚠️ [MongoDB Atlas Configuration Notice]                                          ║
+║ MONGODB_URI contains '<db_password>' placeholder.                               ║
+║ To connect directly to MongoDB Atlas cluster:                                   ║
+║ 1. Create/Open 'backend/.env'                                                   ║
+║ 2. Set MONGODB_URI=mongodb+srv://siddharthtiwary15_db_user:<YOUR_PASSWORD>...   ║
 ║                                                                                 ║
 ║ 🚀 Running In-Memory Database Mode with full feature parity & live state store  ║
 ╚═════════════════════════════════════════════════════════════════════════════════╝
@@ -358,15 +468,19 @@ const connectDB = async () => {
   try {
     const conn = await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 5000,
+      dbName: 'pregnancy_guardian'
     });
     isConnected = true;
     mockDbMode = false;
-    console.log(`✅ [MongoDB] Connected successfully to Atlas Cluster: ${conn.connection.host}`);
+    console.log('MongoDB connected successfully');
     
-    // Seed initial dataset if database is brand new
-    await seedInitialDataIfEmpty();
+    // Seed initial dataset if database is brand new and DEMO_MODE !== 'false'
+    if (process.env.DEMO_MODE === 'true' || !process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+      await seedInitialDataIfEmpty();
+    }
   } catch (error) {
-    console.warn(`⚠️ [MongoDB] Remote Atlas connection failed (${error.message}). Falling back to In-Memory mode.`);
+    const sanitized = error.message.replace(/mongodb(\+srv)?:\/\/[^@]+@/i, 'mongodb+srv://***:***@');
+    console.warn(`⚠️ [MongoDB Connection Notice]: Remote connection failed (${sanitized}). Falling back to In-Memory mode.`);
     mockDbMode = true;
     isConnected = true;
   }

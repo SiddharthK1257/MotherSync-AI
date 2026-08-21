@@ -24,17 +24,23 @@ export function App() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center mx-auto animate-bounce">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-rose-500 text-white flex items-center justify-center mx-auto shadow-md animate-bounce text-xl">
             🌸
           </div>
-          <p className="text-xs font-bold text-slate-600">Initializing MotherSync AI...</p>
+          <p className="text-xs font-bold text-slate-700 tracking-wide">Initializing MotherSync AI Platform...</p>
         </div>
       </div>
     );
   }
 
   if (!user) {
-    return <LoginPage onLoginSuccess={() => setActiveTab('dashboard')} />;
+    return (
+      <LoginPage 
+        onLoginSuccess={(role) => {
+          setActiveTab(role === 'doctor' ? 'doctor-portal' : 'dashboard');
+        }} 
+      />
+    );
   }
 
   const renderActivePage = () => {
