@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "MotherSync AI — Multi-Agent Maternal Healthcare & Care Coordination Platform",
   "scripts": {
+    "start": "node backend/src/server.js",
+    "build": "cd backend && npm install",
+    "postinstall": "cd backend && npm install",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "build:frontend": "cd frontend && npm run build",
