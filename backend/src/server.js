@@ -40,11 +40,56 @@ app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false
 }));
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// CORS Configuration supporting deployed Vercel frontend, custom domains & local development
+const getAllowedOrigins = () => {
+  const localOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:5000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5000'
+  ];
+
+  if (process.env.FRONTEND_URL) {
+    const configuredOrigins = process.env.FRONTEND_URL
+      .split(',')
+      .map(origin => origin.trim().replace(/\/+$/, ''))
+      .filter(Boolean);
+    return [...localOrigins, ...configuredOrigins];
+  }
+
+  return localOrigins;
+};
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser requests (mobile apps, curl, Postman, health check)
+    if (!origin) return callback(null, true);
+
+    const allowed = getAllowedOrigins();
+    const cleanOrigin = origin.replace(/\/+$/, '');
+
+    const isAllowed = 
+      allowed.includes(cleanOrigin) ||
+      cleanOrigin.endsWith('.vercel.app') ||
+      process.env.FRONTEND_URL === '*' ||
+      process.env.NODE_ENV !== 'production';
+
+    if (isAllowed) {
+      return callback(null, true);
+    }
+
+    console.warn(`⚠️ [CORS Blocked] Origin: ${origin} not in allowed origins.`);
+    return callback(new Error(`Origin ${origin} not allowed by CORS policy.`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(morgan('dev'));
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));

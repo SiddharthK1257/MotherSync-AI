@@ -1,37 +1,50 @@
 import axios from 'axios';
 
+/**
+ * Resolves the API base URL based on environment configuration.
+ * - In Vite, `import.meta.env.VITE_API_URL` is configured for deployment environments (e.g. Vercel).
+ * - Falls back to `http://localhost:5000/api` for local development when not provided.
+ * - Normalizes URL formatting by trimming trailing slashes and ensuring the `/api` prefix is present.
+ */
 export const getApiBaseUrl = () => {
-  // 1. Explicit env override if provided
-  if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.trim() !== '') {
-    return import.meta.env.VITE_API_URL;
+  const envUrl = import.meta.env.VITE_API_URL;
+
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
+    let cleanUrl = envUrl.trim().replace(/\/+$/, '');
+    if (!cleanUrl.endsWith('/api')) {
+      cleanUrl = `${cleanUrl}/api`;
+    }
+    return cleanUrl;
   }
-  // 2. In browser on non-localhost domain (Vercel, Render, custom domains), default to Render backend
-  if (typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return 'https://mothersync-ai.onrender.com/api';
+
+  // Handle missing VITE_API_URL in production builds clearly
+  if (import.meta.env.PROD) {
+    console.warn(
+      '⚠️ [MotherSync AI] VITE_API_URL is not set in environment variables! ' +
+      'Please configure VITE_API_URL in your Vercel Project Settings > Environment Variables ' +
+      '(e.g., VITE_API_URL=https://<YOUR_DEPLOYED_BACKEND>/api).'
+    );
   }
-  // 3. Fallback for production builds vs local dev
-  return import.meta.env.PROD ? 'https://mothersync-ai.onrender.com/api' : 'http://localhost:5000/api';
+
+  // Local development default fallback
+  return 'http://localhost:5000/api';
 };
 
-const API_BASE_URL = getApiBaseUrl();
-
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
   timeout: 45000,
 });
 
-// Attach JWT token & ensure correct production baseURL automatically
+// Attach JWT token & ensure baseURL is dynamically kept in sync
 api.interceptors.request.use(
   (config) => {
-    const currentBaseUrl = getApiBaseUrl();
-    if (!config.baseURL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && config.baseURL.includes('localhost'))) {
-      config.baseURL = currentBaseUrl;
-    }
+    config.baseURL = getApiBaseUrl();
     const token = localStorage.getItem('mothersync_token');
-    if (token) {
+    if (token && token !== 'null' && token !== 'undefined') {
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -175,9 +188,7 @@ export const doctorAPI = {
 export const pdfAPI = {
   getPdfSummaryUrl: () => `${getApiBaseUrl()}/pdf/summary`,
   downloadPdfSummary: async () => {
-    const token = localStorage.getItem('mothersync_token');
-    const response = await axios.get(`${getApiBaseUrl()}/pdf/summary`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const response = await api.get('/pdf/summary', {
       responseType: 'blob',
     });
     return response.data;

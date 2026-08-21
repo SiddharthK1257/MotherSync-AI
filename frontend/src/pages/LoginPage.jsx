@@ -324,9 +324,27 @@ export const LoginPage = ({ onLoginSuccess }) => {
 
             {/* Error Message Box */}
             {error && (
-              <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                <span className="leading-snug">{error}</span>
+              <div className="space-y-1.5">
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span className="leading-snug">{error}</span>
+                </div>
+                {!isRegisterMode && error.toLowerCase().includes('invalid') && (
+                  <p className="text-[11px] text-slate-500 text-center">
+                    New user?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRegisterMode(true);
+                        setError(null);
+                      }}
+                      className="font-bold text-teal-700 hover:underline"
+                    >
+                      Switch to Create Account
+                    </button>{' '}
+                    or click <strong>1-Click Instant Evaluation</strong> above.
+                  </p>
+                )}
               </div>
             )}
 
